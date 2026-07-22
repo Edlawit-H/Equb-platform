@@ -229,20 +229,3 @@ Ensure production environment variables are properly set in your hosting platfor
 3. Commit your changes
 4. Push to the branch
 5. Create a Pull Request
-
-## 📄 License
-
-ISC
-
-## 👨‍💻 Team
-
-- **Edlawit** - Core Backend & Database
-- **Etsub** - Authentication & Frontend Integration
-
-## 📞 Support
-
-For issues or questions, please create an issue in the repository or contact the team.
-
----
-
-**Note**: This is an active development project. Some features may be in progress.
