@@ -93,3 +93,14 @@ Desktop.ini
 # Kiro IDE
 # ─────────────────────────────────────────
 .kiro/
+
+# Flutter
+Frontend/build/
+Frontend/.dart_tool/
+Frontend/.flutter-plugins
+Frontend/.flutter-plugins-dependencies
+Frontend/.packages
+Frontend/android/.gradle/
+Frontend/ios/Pods/
+Frontend/ios/.symlinks/
+Frontend/assets/fonts/
