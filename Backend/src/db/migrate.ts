@@ -4,19 +4,22 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { pool } from './pool';
+import { fileURLToPath } from 'url';
+import { pool } from './pool.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
 
 const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
 
 const run = async () => {
   const client = await pool.connect();
   try {
-    // Create migrations tracking table if not exists
     await client.query(`
       CREATE TABLE IF NOT EXISTS _migrations (
-        id SERIAL PRIMARY KEY,
-        filename VARCHAR(255) UNIQUE NOT NULL,
-        executed_at TIMESTAMP DEFAULT NOW()
+        id           SERIAL PRIMARY KEY,
+        filename     VARCHAR(255) UNIQUE NOT NULL,
+        executed_at  TIMESTAMP DEFAULT NOW()
       )
     `);
 
