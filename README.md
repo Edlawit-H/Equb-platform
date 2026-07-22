@@ -52,31 +52,6 @@ A mobile application platform for managing traditional Ethiopian savings groups 
 
 The server will start on `http://localhost:5000` (or the PORT specified in your .env file).
 
-## 📁 Project Structure
-
-```
-Equb-platform/
-├── Backend/
-│   ├── src/
-│   │   ├── app.ts              # Main application entry
-│   │   ├── server.ts           # Server configuration
-│   │   ├── db/
-│   │   │   ├── pool.ts         # Database connection
-│   │   │   ├── migrate.ts      # Migration runner
-│   │   │   └── migrations/     # SQL migration files
-│   │   └── middleware/
-│   │       ├── asyncHandler.ts # Async error wrapper
-│   │       ├── errorHandler.ts # Global error handler
-│   │       └── notFound.ts     # 404 handler
-│   ├── uploads/                # File uploads (gitignored)
-│   ├── exports/                # Report exports (gitignored)
-│   ├── .env.example            # Environment template
-│   ├── package.json            # Dependencies
-│   └── tsconfig.json           # TypeScript config
-├── .kiro/                      # Kiro specs (development)
-└── README.md                   # This file
-```
-
 ## 🛠️ Available Scripts
 
 ### Backend
@@ -170,12 +145,6 @@ See `.env.example` for all available configuration options:
 - **Firebase**: FCM credentials for push notifications
 - **File Upload**: Directory and size limits
 - **CORS**: Allowed origins
-
-## 👥 Team Collaboration
-
-### Task Division
-
-See `.kiro/specs/equb-mobile-app/task-division.md` for detailed task assignments between team members.
 
 ### Development Workflow
 
