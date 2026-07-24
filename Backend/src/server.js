@@ -10,14 +10,16 @@ const PORT = process.env.PORT ?? 5000;
 const start = async () => {
   try {
     await pool.query('SELECT 1');
+    process.stdout.write('Database connection successful.\n');
     startCronJobs();
-    app.listen(PORT, () => {
-      process.stdout.write(`Server running on port ${PORT}\n`);
-    });
   } catch (err) {
-    process.stderr.write(`Failed to start server: ${String(err)}\n`);
-    process.exit(1);
+    process.stderr.write(`[WARNING] Database connection failed: ${err.message || String(err)}\n`);
+    process.stderr.write('Ensure PostgreSQL is running and credentials in .env are correct.\n');
   }
+
+  app.listen(PORT, () => {
+    process.stdout.write(`Server running on http://localhost:${PORT}\n`);
+  });
 };
 
 start();

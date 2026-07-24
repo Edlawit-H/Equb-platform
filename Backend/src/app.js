@@ -39,6 +39,16 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
 
+app.get('/', (_req, res) => {
+  res.status(200).json({
+    name: 'Equb Mobile Application API',
+    version: '1.0.0',
+    status: 'running',
+    healthCheck: '/health',
+    apiPrefix: '/api/v1',
+  });
+});
+
 app.use('/health', healthRouter);
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/users', usersRouter);
