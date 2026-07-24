@@ -1,0 +1,16 @@
+export const createGroup = async (_req, _res, _next) => {};
+export const getMyGroups = async (_req, _res, _next) => {};
+export const getGroupById = async (_req, _res, _next) => {};
+export const updateGroup = async (_req, _res, _next) => {};
+export const deleteGroup = async (_req, _res, _next) => {};
+export const joinGroup = async (_req, _res, _next) => {};
+export const leaveGroup = async (_req, _res, _next) => {};
+export const regenerateInviteCode = async (_req, _res, _next) => {};
+export const getMembers = async (_req, _res, _next) => {};
+export const addMember = async (_req, _res, _next) => {};
+export const removeMember = async (_req, _res, _next) => {};
+export const updateMemberRole = async (_req, _res, _next) => {};
+export const startGroup = async (_req, _res, _next) => {};
+export const endGroup = async (_req, _res, _next) => {};
+export const getGroupDashboard = async (_req, _res, _next) => {};
+export const getGroupActivity = async (_req, _res, _next) => {};

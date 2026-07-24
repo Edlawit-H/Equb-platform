@@ -1,0 +1,15 @@
+export const register = async (_req, _res, _next) => {};
+export const verifyOtp = async (_req, _res, _next) => {};
+export const login = async (_req, _res, _next) => {};
+export const logout = async (_req, _res, _next) => {};
+export const refreshToken = async (_req, _res, _next) => {};
+export const forgotPassword = async (_req, _res, _next) => {};
+export const resetPassword = async (_req, _res, _next) => {};
+export const resendOtp = async (_req, _res, _next) => {};
+export const checkPhone = async (_req, _res, _next) => {};
+export const enableBiometric = async (_req, _res, _next) => {};
+export const registerDevice = async (_req, _res, _next) => {};
+export const unregisterDevice = async (_req, _res, _next) => {};
+export const getSessions = async (_req, _res, _next) => {};
+export const revokeSession = async (_req, _res, _next) => {};
+export const revokeAllSessions = async (_req, _res, _next) => {};
