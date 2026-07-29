@@ -1,10 +1,80 @@
-export const register = async (_req, _res, _next) => {};
-export const verifyOtp = async (_req, _res, _next) => {};
-export const login = async (_req, _res, _next) => {};
+import * as authService from "../services/auth.service.js";
+
+export const register = async (_req, _res, _next) => {
+     try{
+  const result = await authService.registerUser(
+    req.body
+  );
+
+  res.status(200).json({
+    message:"OTP sent",
+    data:result
+  });
+
+ }catch(err){
+  next(err);
+ }
+};
+export const verifyOTP = async (_req, _res, _next) => {
+     try{
+  const user =
+    await authService.verifyOTP(
+      req.body
+    );
+
+  res.status(201).json({
+    message:"Account created successfully",
+    data:user
+  });
+
+
+ }catch(err){
+  next(err);
+ }
+};
+export const login = async (_req, _res, _next) => {
+    try{
+const result =
+await authService.loginUser(
+req.body
+);
+
+res.status(200).json({
+message:"Login successful",
+data:result
+});
+
+}catch(err){
+next(err);
+}
+};
 export const logout = async (_req, _res, _next) => {};
 export const refreshToken = async (_req, _res, _next) => {};
-export const forgotPassword = async (_req, _res, _next) => {};
-export const resetPassword = async (_req, _res, _next) => {};
+export const forgotPassword = async (_req, _res, _next) => {
+try{
+
+const result =
+await authService.requestPasswordReset(
+    req.body.phone_number
+);
+
+res.json(result);
+}catch(err){
+next(err);
+}    
+};
+export const resetPassword = async (_req, _res, _next) => {
+try{
+const result =
+await authService.resetPassword(
+  req.body
+);
+res.json(result);
+
+}catch(err){
+next(err);
+}    
+};
 export const resendOtp = async (_req, _res, _next) => {};
 export const checkPhone = async (_req, _res, _next) => {};
 export const enableBiometric = async (_req, _res, _next) => {};
