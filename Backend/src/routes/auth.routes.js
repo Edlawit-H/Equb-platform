@@ -4,25 +4,15 @@ import {
  verifyOTP,
  login,
  forgotPassword,
- resetPassword
+ resetPassword,
+ profile
 } from "../controllers/auth.controller.js";
 
 import { protect } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
-router.get(
-    "/me",
-    protect,
-    (req,res)=>{
-
-        res.json({
-            message:"Authenticated",
-            user:req.user
-        });
-
-    }
-);
+router.get("/profile",protect,profile);
 
 router.post("/register", register);
 

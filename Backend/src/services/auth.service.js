@@ -31,6 +31,7 @@ import {
 
 import { sanitizeUser } from "../utils/sanitizeUser.js";
 import { generateToken } from "../utils/token.js";
+import { generateAccessToken, generateRefreshToken } from "../utils/jwt.js";
 
 
 
@@ -153,30 +154,37 @@ WHERE otp_id=$2
 await client.query("COMMIT");
 
 
-const { password_hash, ...safeUser } = user;
-return safeUser;
+const safeUser = sanitizeUser(user);
+
+const token = generateToken(user);
+const payload = {
+  userId: user.user_id,
+  role: user.role,
+};
+const accessToken = generateAccessToken(payload);
+const refreshToken = generateRefreshToken(payload);
+
+return {
+    user: safeUser,
+    accessToken,
+    refreshToken,
+};
+
 
 }catch(error){
-
 
 await client.query(
 "ROLLBACK"
 );
 
-
 throw error;
-
-
 
 }finally{
 
 
 client.release();
 
-
 }
-
-
 };
 
 
@@ -213,13 +221,18 @@ export const loginUser = async (data) => {
   }
 
 const safeUser = sanitizeUser(user);
-
+const payload = {
+  userId: user.user_id,
+  role: user.role,
+};
 const token = generateToken(user);
-
+const accessToken = generateAccessToken(payload);
+const refreshToken = generateRefreshToken(payload);
 
 return {
     user: safeUser,
-    token
+    accessToken,
+    refreshToken,
 };
 
 };

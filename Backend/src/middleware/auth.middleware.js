@@ -9,9 +9,10 @@ export const protect = (req, _res, next) => {
 
   const token = header.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET ?? '');
+    const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET ?? '');
     req.userId = decoded.userId;
     req.userRole = decoded.role;
+    req.user = decoded;
     next();
   } catch {
     next(new AppError('Invalid or expired token', 401));
