@@ -1,6 +1,6 @@
 import * as authService from "../services/auth.service.js";
 
-export const register = async (_req, _res, _next) => {
+export const register = async (req, res, next) => {
      try{
   const result = await authService.registerUser(
     req.body
@@ -15,10 +15,10 @@ export const register = async (_req, _res, _next) => {
   next(err);
  }
 };
-export const verifyOTP = async (_req, _res, _next) => {
+export const verifyOTP = async (req, res, next) => {
      try{
   const user =
-    await authService.verifyOTP(
+    await authService.verifyRegistrationOTP(
       req.body
     );
 
@@ -32,7 +32,7 @@ export const verifyOTP = async (_req, _res, _next) => {
   next(err);
  }
 };
-export const login = async (_req, _res, _next) => {
+export const login = async (req, res, next) => {
     try{
 const result =
 await authService.loginUser(
@@ -50,7 +50,7 @@ next(err);
 };
 export const logout = async (_req, _res, _next) => {};
 export const refreshToken = async (_req, _res, _next) => {};
-export const forgotPassword = async (_req, _res, _next) => {
+export const forgotPassword = async (req, res, next) => {
 try{
 
 const result =
@@ -63,7 +63,7 @@ res.json(result);
 next(err);
 }    
 };
-export const resetPassword = async (_req, _res, _next) => {
+export const resetPassword = async (req, res, next) => {
 try{
 const result =
 await authService.resetPassword(
@@ -83,3 +83,9 @@ export const unregisterDevice = async (_req, _res, _next) => {};
 export const getSessions = async (_req, _res, _next) => {};
 export const revokeSession = async (_req, _res, _next) => {};
 export const revokeAllSessions = async (_req, _res, _next) => {};
+export async function profile(req, res) {
+  res.status(200).json({
+    message: "Authenticated",
+    user: req.user,
+  });
+}
