@@ -1,12 +1,95 @@
-export const createGroup = async (_req, _res, _next) => {};
-export const getMyGroups = async (_req, _res, _next) => {};
-export const getGroupById = async (_req, _res, _next) => {};
-export const updateGroup = async (_req, _res, _next) => {};
+import * as groupService from "../services/group.service.js";
+
+export async function createGroup(req, res, next) {
+    try {
+        const group = await groupService.createGroup(
+            req.body,
+            req.user.userId
+        );
+
+        res.status(201).json({
+            message: "Group created successfully",
+            data: group,
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
+export  async function getMyGroups  (req, res, next) {
+     try {
+        const groups = await groupService.getGroups();
+
+        res.status(200).json({
+            message: "Groups retrieved successfully",
+            data: groups,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+export async function getGroupById(req, res, next) {
+    try {
+        const group = await groupService.getGroupById(
+            req.params.groupId
+        );
+
+        res.status(200).json({
+            message: "Group retrieved successfully",
+            data: group,
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+export async function updateGroup(req, res, next) {
+    try {
+        const group = await groupService.updateGroup(
+            req.params.groupId,
+            req.user.userId,
+            req.body
+        );
+
+        res.status(200).json({
+            message: "Group updated successfully",
+            data: group,
+        });
+    } catch (err) {
+        next(err);
+    }
+}
 export const deleteGroup = async (_req, _res, _next) => {};
-export const joinGroup = async (_req, _res, _next) => {};
+export async function joinGroup(req, res, next) {
+    try {
+        const member = await groupService.joinGroup(
+            req.params.groupId,
+            req.user.userId
+        );
+
+        res.status(201).json({
+            message: "Joined group successfully",
+            data: member,
+        });
+    } catch (err) {
+        next(err);
+    }
+}
 export const leaveGroup = async (_req, _res, _next) => {};
 export const regenerateInviteCode = async (_req, _res, _next) => {};
-export const getMembers = async (_req, _res, _next) => {};
+export async function getGroupMembers(req, res, next) {
+    try {
+        const members = await groupService.getGroupMembers(
+            req.params.groupId
+        );
+
+        res.status(200).json({
+            message: "Members retrieved successfully",
+            data: members,
+        });
+    } catch (err) {
+        next(err);
+    }
+}
 export const addMember = async (_req, _res, _next) => {};
 export const removeMember = async (_req, _res, _next) => {};
 export const updateMemberRole = async (_req, _res, _next) => {};
