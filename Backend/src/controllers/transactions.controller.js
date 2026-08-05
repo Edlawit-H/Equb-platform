@@ -2,8 +2,7 @@ import { pool } from '../db/pool.js';
 import { AppError } from '../utils/AppError.js';
 import { asyncWrapper } from '../utils/asyncWrapper.js';
 
-// GET /api/v1/transactions/wallet
-// Returns the authenticated user's wallet balance
+// Get authenticated user's wallet balance
 export const getWallet = asyncWrapper(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT user_id, full_name, wallet_balance FROM users WHERE user_id = $1 AND is_deleted = FALSE`,
@@ -24,8 +23,7 @@ export const getWallet = asyncWrapper(async (req, res) => {
   });
 });
 
-// POST /api/v1/transactions/top-up
-// Simulates adding funds to user's wallet
+// Top up user's wallet balance
 export const topUpWallet = asyncWrapper(async (req, res) => {
   const { amount } = req.body;
 
@@ -33,7 +31,6 @@ export const topUpWallet = asyncWrapper(async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // Credit the user's wallet
     const { rows: userRows } = await client.query(
       `UPDATE users
        SET wallet_balance = wallet_balance + $1
@@ -46,7 +43,6 @@ export const topUpWallet = asyncWrapper(async (req, res) => {
       throw new AppError('User not found', 404);
     }
 
-    // Record the transaction
     const { rows: txRows } = await client.query(
       `INSERT INTO transactions (user_id, type, amount, status)
        VALUES ($1, 'top_up', $2, 'completed')
@@ -72,8 +68,7 @@ export const topUpWallet = asyncWrapper(async (req, res) => {
   }
 });
 
-// GET /api/v1/transactions
-// Returns paginated transaction history for authenticated user with optional filters
+// Get transaction history for authenticated user
 export const getTransactions = asyncWrapper(async (req, res) => {
   const { type, group_id, from, to, page = '1', limit = '20' } = req.query;
 
@@ -143,8 +138,7 @@ export const getTransactions = asyncWrapper(async (req, res) => {
   });
 });
 
-// GET /api/v1/transactions/:id
-// Returns a single transaction by ID (must belong to the authenticated user)
+// Get single transaction by ID
 export const getTransactionById = asyncWrapper(async (req, res) => {
   const { id } = req.params;
 
@@ -174,8 +168,7 @@ export const getTransactionById = asyncWrapper(async (req, res) => {
   });
 });
 
-// GET /api/v1/transactions/stats
-// Returns summary statistics: total top-ups, total debits, total payouts received
+// Get summary transaction statistics for user
 export const getTransactionStats = asyncWrapper(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT
@@ -216,8 +209,7 @@ export const getTransactionStats = asyncWrapper(async (req, res) => {
   });
 });
 
-// GET /api/v1/transactions/group/:groupId
-// Returns transactions for a specific group (must be a member)
+// Get transaction history for a specific group
 export const getGroupTransactions = asyncWrapper(async (req, res) => {
   const { groupId } = req.params;
   const { page = '1', limit = '20' } = req.query;
@@ -226,7 +218,6 @@ export const getGroupTransactions = asyncWrapper(async (req, res) => {
   const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
   const offset = (pageNum - 1) * limitNum;
 
-  // Verify user is a member of the group
   const { rows: memberRows } = await pool.query(
     `SELECT member_id FROM group_members
      WHERE user_id = $1 AND group_id = $2 AND status = 'active'`,

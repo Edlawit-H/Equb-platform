@@ -3,14 +3,6 @@ import { AppError } from '../utils/AppError.js';
 import { asyncWrapper } from '../utils/asyncWrapper.js';
 import { checkCycleComplete } from '../services/payout.service.js';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Resolve a group_member row for the authenticated user in a given group.
- * Throws 403 if the user is not an active member.
- */
 async function resolveMember(client, userId, groupId) {
   const { rows } = await client.query(
     `SELECT member_id FROM group_members
@@ -23,9 +15,6 @@ async function resolveMember(client, userId, groupId) {
   return rows[0].member_id;
 }
 
-/**
- * Write an immutable audit log entry.
- */
 async function writeAuditLog(client, userId, action, entityName, entityId) {
   await client.query(
     `INSERT INTO audit_logs (user_id, action, entity_name, entity_id)
@@ -34,9 +23,7 @@ async function writeAuditLog(client, userId, action, entityName, entityId) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// POST /api/v1/contributions  — member pays their own contribution
-// ---------------------------------------------------------------------------
+// Pay contribution from wallet
 export const payContribution = asyncWrapper(async (req, res) => {
   const { group_id, cycle_number } = req.body;
 
@@ -44,10 +31,8 @@ export const payContribution = asyncWrapper(async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // 1. Resolve member
     const memberId = await resolveMember(client, req.userId, group_id);
 
-    // 2. Fetch the contribution record
     const { rows: cRows } = await client.query(
       `SELECT contribution_id, amount, status
        FROM contributions
@@ -64,7 +49,6 @@ export const payContribution = asyncWrapper(async (req, res) => {
 
     const amount = Number(contribution.amount);
 
-    // 3. Check wallet balance
     const { rows: walletRows } = await client.query(
       `SELECT wallet_balance FROM users WHERE user_id = $1 AND is_deleted = FALSE`,
       [req.userId]
@@ -74,13 +58,11 @@ export const payContribution = asyncWrapper(async (req, res) => {
       throw new AppError('Insufficient wallet balance', 400);
     }
 
-    // 4. Deduct from wallet
     await client.query(
       `UPDATE users SET wallet_balance = wallet_balance - $1 WHERE user_id = $2`,
       [amount, req.userId]
     );
 
-    // 5. Mark contribution as paid
     const now = new Date().toISOString();
     await client.query(
       `UPDATE contributions SET status = 'paid', paid_date = $1
@@ -88,7 +70,6 @@ export const payContribution = asyncWrapper(async (req, res) => {
       [now, contribution.contribution_id]
     );
 
-    // 6. Record debit transaction
     const { rows: txRows } = await client.query(
       `INSERT INTO transactions (user_id, group_id, type, amount, status)
        VALUES ($1, $2, 'contribution_debit', $3, 'completed')
@@ -96,7 +77,6 @@ export const payContribution = asyncWrapper(async (req, res) => {
       [req.userId, group_id, amount]
     );
 
-    // 7. Audit log
     await writeAuditLog(
       client,
       req.userId,
@@ -107,7 +87,6 @@ export const payContribution = asyncWrapper(async (req, res) => {
 
     await client.query('COMMIT');
 
-    // 8. Trigger payout check (after commit — non-blocking)
     checkCycleComplete(group_id, cycle_number).catch(() => {});
 
     res.status(200).json({
@@ -127,9 +106,7 @@ export const payContribution = asyncWrapper(async (req, res) => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// GET /api/v1/contributions  — user's contributions with filters + pagination
-// ---------------------------------------------------------------------------
+// List user contributions with pagination and filters
 export const getContributions = asyncWrapper(async (req, res) => {
   const { group_id, status, page = '1', limit = '20' } = req.query;
 
@@ -185,9 +162,7 @@ export const getContributions = asyncWrapper(async (req, res) => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// GET /api/v1/contributions/pending  — user's unpaid contributions
-// ---------------------------------------------------------------------------
+// List pending contributions for user
 export const getPendingContributions = asyncWrapper(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT
@@ -207,9 +182,7 @@ export const getPendingContributions = asyncWrapper(async (req, res) => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// GET /api/v1/contributions/overdue  — user's overdue contributions
-// ---------------------------------------------------------------------------
+// List overdue contributions for user
 export const getOverdueContributions = asyncWrapper(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT
@@ -229,9 +202,7 @@ export const getOverdueContributions = asyncWrapper(async (req, res) => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// GET /api/v1/contributions/stats  — on-time rate, overdue count, total paid
-// ---------------------------------------------------------------------------
+// Get contribution stats summary
 export const getContributionStats = asyncWrapper(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT
@@ -267,9 +238,7 @@ export const getContributionStats = asyncWrapper(async (req, res) => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// GET /api/v1/contributions/:id  — single contribution detail
-// ---------------------------------------------------------------------------
+// Get single contribution by ID
 export const getContributionById = asyncWrapper(async (req, res) => {
   const { id } = req.params;
 
@@ -288,7 +257,6 @@ export const getContributionById = asyncWrapper(async (req, res) => {
 
   if (rows.length === 0) throw new AppError('Contribution not found', 404);
 
-  // Must belong to the requesting user unless admin
   if (rows[0].user_id !== req.userId && req.userRole !== 'system_admin') {
     throw new AppError('Forbidden', 403);
   }
@@ -299,14 +267,11 @@ export const getContributionById = asyncWrapper(async (req, res) => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// GET /api/v1/groups/:id/contributions  — all contributions for a group
-// ---------------------------------------------------------------------------
+// Get all contributions for a group
 export const getGroupContributions = asyncWrapper(async (req, res) => {
   const { id: groupId } = req.params;
   const { cycle_number, status, page = '1', limit = '20' } = req.query;
 
-  // Must be an active group member
   const { rows: memberCheck } = await pool.query(
     `SELECT member_id FROM group_members
      WHERE user_id = $1 AND group_id = $2 AND status = 'active'`,
@@ -361,9 +326,7 @@ export const getGroupContributions = asyncWrapper(async (req, res) => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// PUT /api/v1/contributions/:id  — admin correction
-// ---------------------------------------------------------------------------
+// Admin update contribution
 export const updateContribution = asyncWrapper(async (req, res) => {
   if (req.userRole !== 'system_admin') throw new AppError('Forbidden', 403);
 
@@ -386,11 +349,7 @@ export const updateContribution = asyncWrapper(async (req, res) => {
   res.status(200).json({ status: 'success', data: { contribution: rows[0] } });
 });
 
-// ---------------------------------------------------------------------------
-// DELETE /api/v1/contributions/:id  — admin soft-delete (status → cancelled)
-// Note: no 'cancelled' in DB CHECK — we just zero paid_date and reset to pending
-// The task-division says soft-delete so we implement as admin override
-// ---------------------------------------------------------------------------
+// Admin reset contribution to pending
 export const deleteContribution = asyncWrapper(async (req, res) => {
   if (req.userRole !== 'system_admin') throw new AppError('Forbidden', 403);
 
@@ -406,9 +365,7 @@ export const deleteContribution = asyncWrapper(async (req, res) => {
   res.status(200).json({ status: 'success', message: 'Contribution reset to pending' });
 });
 
-// ---------------------------------------------------------------------------
-// POST /api/v1/contributions/bulk  — admin; bulk mark-as-paid (atomic)
-// ---------------------------------------------------------------------------
+// Admin bulk mark contributions as paid
 export const bulkContributions = asyncWrapper(async (req, res) => {
   if (req.userRole !== 'system_admin') throw new AppError('Forbidden', 403);
 
@@ -431,7 +388,6 @@ export const bulkContributions = asyncWrapper(async (req, res) => {
       );
 
       if (rows.length > 0) {
-        // Fetch user_id for the member
         const { rows: uRows } = await client.query(
           `SELECT user_id FROM group_members WHERE member_id = $1`,
           [memberId]
@@ -455,7 +411,6 @@ export const bulkContributions = asyncWrapper(async (req, res) => {
 
     await client.query('COMMIT');
 
-    // Trigger payout check after bulk payment
     checkCycleComplete(group_id, cycle_number).catch(() => {});
 
     res.status(200).json({
@@ -471,9 +426,7 @@ export const bulkContributions = asyncWrapper(async (req, res) => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// POST /api/v1/contributions/manual  — admin; manually record for a member
-// ---------------------------------------------------------------------------
+// Admin manual contribution record
 export const manualContribution = asyncWrapper(async (req, res) => {
   if (req.userRole !== 'system_admin') throw new AppError('Forbidden', 403);
 
