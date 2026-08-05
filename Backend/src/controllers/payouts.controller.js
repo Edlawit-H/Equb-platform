@@ -3,10 +3,6 @@ import { AppError } from '../utils/AppError.js';
 import { asyncWrapper } from '../utils/asyncWrapper.js';
 import { notifyPayoutReceived, notifyGroupCompleted } from '../services/notification.service.js';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 async function writeAuditLog(client, userId, action, entityName, entityId) {
   await client.query(
     `INSERT INTO audit_logs (user_id, action, entity_name, entity_id)
@@ -15,9 +11,7 @@ async function writeAuditLog(client, userId, action, entityName, entityId) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// GET /api/v1/payouts  — user's payouts (with filters & pagination)
-// ---------------------------------------------------------------------------
+// Get authenticated user's payouts
 export const getMyPayouts = asyncWrapper(async (req, res) => {
   const { group_id, status, page = '1', limit = '20' } = req.query;
 
@@ -85,9 +79,7 @@ export const getMyPayouts = asyncWrapper(async (req, res) => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// GET /api/v1/payouts/history  — completed payouts received by user
-// ---------------------------------------------------------------------------
+// Get completed payout history for user
 export const getPayoutHistory = asyncWrapper(async (req, res) => {
   const { page = '1', limit = '20' } = req.query;
 
@@ -138,9 +130,7 @@ export const getPayoutHistory = asyncWrapper(async (req, res) => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// GET /api/v1/payouts/schedule  — projected payout dates for user's active groups
-// ---------------------------------------------------------------------------
+// Get projected payout schedule for user's active groups
 export const getPayoutSchedule = asyncWrapper(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT
@@ -201,9 +191,7 @@ export const getPayoutSchedule = asyncWrapper(async (req, res) => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// GET /api/v1/payouts/:id  — single payout detail
-// ---------------------------------------------------------------------------
+// Get single payout detail by ID
 export const getPayoutById = asyncWrapper(async (req, res) => {
   const { id } = req.params;
 
@@ -244,14 +232,11 @@ export const getPayoutById = asyncWrapper(async (req, res) => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// GET /api/v1/groups/:id/payouts  — all payouts for a group
-// ---------------------------------------------------------------------------
+// Get all payouts for a group
 export const getGroupPayouts = asyncWrapper(async (req, res) => {
   const { id: groupId } = req.params;
   const { page = '1', limit = '20' } = req.query;
 
-  // Verify member of group or system admin
   if (req.userRole !== 'system_admin') {
     const { rows: memberCheck } = await pool.query(
       `SELECT member_id FROM group_members
@@ -308,9 +293,7 @@ export const getGroupPayouts = asyncWrapper(async (req, res) => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// POST /api/v1/payouts/:id/approve  — admin manual approve for pending payout
-// ---------------------------------------------------------------------------
+// Admin manual approve for pending payout
 export const approvePayout = asyncWrapper(async (req, res) => {
   if (req.userRole !== 'system_admin') {
     throw new AppError('Forbidden', 403);
@@ -340,7 +323,6 @@ export const approvePayout = asyncWrapper(async (req, res) => {
       throw new AppError(`Cannot approve payout with status '${payout.status}'`, 400);
     }
 
-    // Guard: check if all active members paid for this cycle
     const { rows: unpaidRows } = await client.query(
       `SELECT contribution_id FROM contributions
        WHERE group_id = $1 AND cycle_number = $2 AND status != 'paid'`,
@@ -353,27 +335,23 @@ export const approvePayout = asyncWrapper(async (req, res) => {
 
     const now = new Date().toISOString();
 
-    // 1. Update payout status
     await client.query(
       `UPDATE payouts SET status = 'completed', payout_date = $1 WHERE payout_id = $2`,
       [now, id]
     );
 
-    // 2. Credit winner's wallet
     const payoutAmount = Number(payout.payout_amount);
     await client.query(
       `UPDATE users SET wallet_balance = wallet_balance + $1 WHERE user_id = $2`,
       [payoutAmount, payout.user_id]
     );
 
-    // 3. Insert transaction
     await client.query(
       `INSERT INTO transactions (user_id, group_id, type, amount, status)
        VALUES ($1, $2, 'payout_credit', $3, 'completed')`,
       [payout.user_id, payout.group_id, payoutAmount]
     );
 
-    // 4. Update group cycle
     const { rows: groupRows } = await client.query(
       `SELECT contribution_amount, max_members, current_cycle, cycle_duration
        FROM equb_groups WHERE group_id = $1`,
@@ -393,7 +371,6 @@ export const approvePayout = asyncWrapper(async (req, res) => {
         [payout.group_id]
       );
     } else {
-      // Generate next cycle's contributions
       const { rows: dueDateRows } = await client.query(
         `SELECT due_date FROM contributions
          WHERE group_id = $1 AND cycle_number = $2
@@ -412,12 +389,10 @@ export const approvePayout = asyncWrapper(async (req, res) => {
       );
     }
 
-    // 5. Write audit log
     await writeAuditLog(client, req.userId, 'payout_approved', 'payouts', id);
 
     await client.query('COMMIT');
 
-    // Notify recipient (non-blocking)
     notifyPayoutReceived(payout.user_id, payoutAmount, payout.group_id).catch(() => {});
     if (nextCycle > group.max_members) {
       notifyGroupCompleted(payout.group_id).catch(() => {});
@@ -436,9 +411,7 @@ export const approvePayout = asyncWrapper(async (req, res) => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// POST /api/v1/payouts/:id/reject  — admin reject pending payout
-// ---------------------------------------------------------------------------
+// Admin reject pending payout
 export const rejectPayout = asyncWrapper(async (req, res) => {
   if (req.userRole !== 'system_admin') {
     throw new AppError('Forbidden', 403);
@@ -478,9 +451,7 @@ export const rejectPayout = asyncWrapper(async (req, res) => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// PUT /api/v1/payouts/:id  — admin update payout
-// ---------------------------------------------------------------------------
+// Admin update payout
 export const updatePayout = asyncWrapper(async (req, res) => {
   if (req.userRole !== 'system_admin') {
     throw new AppError('Forbidden', 403);
@@ -522,9 +493,7 @@ export const updatePayout = asyncWrapper(async (req, res) => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// DELETE /api/v1/payouts/:id  — admin soft-delete / cancellation
-// ---------------------------------------------------------------------------
+// Admin delete/reject payout
 export const deletePayout = asyncWrapper(async (req, res) => {
   if (req.userRole !== 'system_admin') {
     throw new AppError('Forbidden', 403);
