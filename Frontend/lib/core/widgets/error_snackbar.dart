@@ -20,3 +20,9 @@ void showSuccessSnackbar(BuildContext context, String message) {
     ),
   );
 }
+
+class ErrorSnackbar {
+  static void show(BuildContext context, String message) {
+    showErrorSnackbar(context, message);
+  }
+}
