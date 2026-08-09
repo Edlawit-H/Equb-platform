@@ -12,10 +12,11 @@ class EqubApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
+    return MaterialApp(
       title: 'Equb',
       theme: AppTheme.light,
-      routerConfig: appRouter,
+      initialRoute: '/home',
+      onGenerateRoute: onGenerateAppRoute,
       debugShowCheckedModeBanner: false,
     );
   }
