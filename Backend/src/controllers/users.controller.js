@@ -62,4 +62,19 @@ export async function changePassword(req, res, next) {
 export const deleteAccount = async (_req, _res, _next) => {};
 export const getUserById = async (_req, _res, _next) => {};
 export const searchUsers = async (_req, _res, _next) => {};
-export const getUserGroups = async (_req, _res, _next) => {};
+export async function getUserGroups(req, res, next) {
+    try {
+
+        const groups = await userService.getUserGroups(
+            req.user.userId
+        );
+
+        res.status(200).json({
+            message: "User groups retrieved successfully",
+            data: groups,
+        });
+
+    } catch (err) {
+        next(err);
+    }
+}

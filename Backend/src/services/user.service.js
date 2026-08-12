@@ -13,7 +13,7 @@ export async function getMyProfile(userId) {
             profile_image,
             role,
             status,
-            created_at;
+            created_at
         FROM users
         WHERE user_id = $1
         AND is_deleted = FALSE;
@@ -48,6 +48,11 @@ export async function updateMyProfile(userId, data) {
 
     // Check email uniqueness (only if email is provided)
     if (data.email !== undefined) {
+        data.email = data.email.trim();
+
+    if (data.email === "") {
+        throw new Error("Email cannot be empty");
+    }
 
         const { rows: emailRows } = await pool.query(
             `
@@ -77,7 +82,7 @@ export async function updateMyProfile(userId, data) {
     // Build dynamic UPDATE query
     for (const field of allowedFields) {
 
-        if (data[field] !== undefined) {
+        if (data[field] !== undefined && data[field] !== "") {
 
             values.push(data[field]);
 
@@ -107,7 +112,7 @@ export async function updateMyProfile(userId, data) {
             profile_image,
             role,
             status,
-            created_at;
+            created_at
     `;
 
     const { rows } = await pool.query(query, values);
@@ -236,4 +241,46 @@ export async function getDashboard(userId) {
             groups_joined: Number(statsRows[0].groups_joined),
         },
     };
+}
+
+
+export async function getUserGroups(userId) {
+
+    const { rows: userRows } = await pool.query(
+        `
+        SELECT user_id
+        FROM users
+        WHERE user_id = $1
+        AND is_deleted = FALSE;
+        `,
+        [userId]
+    );
+
+    if (userRows.length !== 1) {
+        throw new Error("User not found");
+    }
+
+    const { rows } = await pool.query(
+        `
+        SELECT
+            g.group_id,
+            g.group_name,
+            g.description,
+            g.contribution_amount,
+            g.cycle_duration,
+            g.max_members,
+            g.start_date,
+            g.end_date,
+            g.status,
+            gm.role
+        FROM group_members gm
+        INNER JOIN equb_groups g
+            ON gm.group_id = g.group_id
+        WHERE gm.user_id = $1
+        AND g.is_deleted = FALSE
+        `,
+        [userId]
+    );
+
+    return rows;
 }

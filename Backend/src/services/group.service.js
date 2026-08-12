@@ -133,20 +133,9 @@ export async function joinGroup(groupId, userId) {
     const group = rows[0];
 
     // Check if already a member
-    const { rows: memberRows } = await pool.query(
-        `
-        SELECT 1
-        FROM group_members
-        WHERE group_id = $1
-        AND user_id = $2;
-        `,
-        [groupId, userId]
-    );
-
-    if (memberRows.length > 0) {
-        throw new Error("You are already a member of this group");
-    }
-
+   if (await isMember(userId, groupId)) {
+    throw new Error("User is already a member");
+   }
     // Check if group is full
     const { rows: countRows } = await pool.query(
         `
@@ -190,7 +179,6 @@ export async function getGroupMembers(groupId) {
         SELECT
             gm.member_id,
             gm.role,
-            gm.joined_at,
             u.user_id,
             u.full_name,
             u.phone_number,
@@ -230,9 +218,9 @@ export async function updateGroup(groupId, userId, data) {
     const group = rows[0];
 
     // Authorization
-    if (group.admin_id !== userId) {
-        throw new Error("Only the group admin can update this group");
-    }
+ if (!(await isGroupAdmin(userId, groupId))) {
+    throw new Error("Only the group admin can update this group");
+}
 
     // Allowed fields
     const allowedFields = [
@@ -283,4 +271,120 @@ export async function updateGroup(groupId, userId, data) {
     );
 
     return updatedRows[0];
+}
+
+
+export async function getMembership(userId, groupId) {
+
+    const { rows } = await pool.query(
+        `
+        SELECT *
+        FROM group_members
+        WHERE user_id = $1
+        AND group_id = $2;
+        `,
+        [userId, groupId]
+    );
+
+    return rows[0] || null;
+}
+
+export async function isMember(userId, groupId) {
+
+    const membership = await getMembership(
+        userId,
+        groupId
+    );
+
+    return !!membership;
+}
+
+export async function isGroupAdmin(userId, groupId) {
+
+    const { rows } = await pool.query(
+        `
+        SELECT admin_id
+        FROM equb_groups
+        WHERE group_id = $1
+        AND is_deleted = FALSE;
+        `,
+        [groupId]
+    );
+
+    if (rows.length !== 1) {
+        return false;
+    }
+
+    return rows[0].admin_id === userId;
+}
+
+
+
+
+export async function leaveGroup(groupId, userId) {
+
+    // Check membership
+    const membership = await getMembership(
+        userId,
+        groupId
+    );
+
+    if (!membership) {
+        throw new Error(
+            "You are not a member of this group"
+        );
+    }
+
+    // Prevent admin from leaving
+    if (await isGroupAdmin(userId, groupId)) {
+        throw new Error(
+            "Group admin cannot leave the group"
+        );
+    }
+
+    // Remove membership
+    await pool.query(
+        `
+        DELETE FROM group_members
+        WHERE member_id = $1;
+        `,
+        [membership.member_id]
+    );
+}
+
+
+export async function deleteGroup(groupId, userId) {
+
+    // Check group exists
+    const { rows } = await pool.query(
+        `
+        SELECT group_id
+        FROM equb_groups
+        WHERE group_id = $1
+        AND is_deleted = FALSE;
+        `,
+        [groupId]
+    );
+
+    if (rows.length !== 1) {
+        throw new Error("Group not found");
+    }
+
+    // Only admin can delete
+    if (!(await isGroupAdmin(userId, groupId))) {
+        throw new Error(
+            "Only the group admin can delete this group"
+        );
+    }
+
+    // Soft delete
+    await pool.query(
+        `
+        UPDATE equb_groups
+        SET is_deleted = TRUE
+        WHERE group_id = $1;
+        `,
+        [groupId]
+    );
+
 }

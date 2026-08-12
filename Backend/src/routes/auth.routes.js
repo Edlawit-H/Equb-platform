@@ -5,14 +5,13 @@ import {
  login,
  forgotPassword,
  resetPassword,
- profile
 } from "../controllers/auth.controller.js";
+import * as userController from "../controllers/users.controller.js";
 
 import { protect } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
-router.get("/profile",protect,profile);
 
 router.post("/register", register);
 
@@ -24,3 +23,6 @@ router.post("/forgot-password",forgotPassword);
 
 router.post("/reset-password",resetPassword);
 export default router;
+
+router.get("/profile",protect,userController.getMyProfile);
+router.put("/profile",protect,userController.updateMyProfile);

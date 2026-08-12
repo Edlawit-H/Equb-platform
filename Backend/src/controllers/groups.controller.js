@@ -8,6 +8,7 @@ export async function createGroup(req, res, next) {
         );
 
         res.status(201).json({
+            success: true,
             message: "Group created successfully",
             data: group,
         });
@@ -16,11 +17,12 @@ export async function createGroup(req, res, next) {
     }
 }
 
-export  async function getMyGroups  (req, res, next) {
+export  async function getGroups  (req, res, next) {
      try {
         const groups = await groupService.getGroups();
 
         res.status(200).json({
+            success: true,
             message: "Groups retrieved successfully",
             data: groups,
         });
@@ -35,6 +37,7 @@ export async function getGroupById(req, res, next) {
         );
 
         res.status(200).json({
+            success: true,
             message: "Group retrieved successfully",
             data: group,
         });
@@ -58,7 +61,22 @@ export async function updateGroup(req, res, next) {
         next(err);
     }
 }
-export const deleteGroup = async (_req, _res, _next) => {};
+export async function deleteGroup(req, res, next) {
+    try {
+
+        await groupService.deleteGroup(
+            req.params.groupId,
+            req.user.userId
+        );
+
+        res.status(200).json({
+            message: "Group deleted successfully"
+        });
+
+    } catch (err) {
+        next(err);
+    }
+}
 export async function joinGroup(req, res, next) {
     try {
         const member = await groupService.joinGroup(
@@ -74,7 +92,22 @@ export async function joinGroup(req, res, next) {
         next(err);
     }
 }
-export const leaveGroup = async (_req, _res, _next) => {};
+export async function leaveGroup(req, res, next) {
+    try {
+
+        await groupService.leaveGroup(
+            req.params.groupId,
+            req.user.userId
+        );
+
+        res.status(200).json({
+            message: "Left group successfully"
+        });
+
+    } catch (err) {
+        next(err);
+    }
+}
 export const regenerateInviteCode = async (_req, _res, _next) => {};
 export async function getGroupMembers(req, res, next) {
     try {
@@ -83,6 +116,7 @@ export async function getGroupMembers(req, res, next) {
         );
 
         res.status(200).json({
+            success: true,
             message: "Members retrieved successfully",
             data: members,
         });
