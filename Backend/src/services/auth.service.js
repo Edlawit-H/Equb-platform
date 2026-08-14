@@ -238,7 +238,50 @@ return {
 };
 
 
+export const resendRegistrationOTP = async (data) => {
 
+  const existing = await findUserByPhone(
+    data.phone_number
+  );
+
+  // User must NOT already be registered
+  if (existing) {
+    throw new Error("User already exists");
+  }
+
+  const otp = generateOTP();
+
+  const expiresAt = new Date(
+    Date.now() + 5 * 60 * 1000
+  );
+
+  // Invalidate previous registration OTPs
+  await pool.query(
+    `
+    UPDATE otp_codes
+    SET verified = true
+    WHERE phone_number = $1
+      AND purpose = 'registration'
+      AND verified = false
+    `,
+    [data.phone_number]
+  );
+
+  // Create new OTP
+  await createOTP({
+    phone_number: data.phone_number,
+    otp_code: otp,
+    purpose: "registration",
+    expires_at: expiresAt
+  });
+
+  // Development only
+  console.log("New OTP:", otp);
+
+  return {
+    message: "OTP resent successfully"
+  };
+};
 
 
 
@@ -395,4 +438,38 @@ client.release();
 }
 
 
+};
+
+export const refreshAccessToken = async (refreshToken) => {
+
+  if (!refreshToken) {
+    throw new Error("Refresh token required");
+  }
+
+  try {
+
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+
+    const payload = {
+      userId: decoded.userId,
+      role: decoded.role,
+    };
+
+    const accessToken =
+      generateAccessToken(payload);
+
+    return {
+      accessToken,
+    };
+
+  } catch (error) {
+
+    throw new Error(
+      "Invalid or expired refresh token"
+    );
+
+  }
 };
