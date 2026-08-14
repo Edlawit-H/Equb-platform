@@ -16,6 +16,7 @@ router.post("/:groupId/leave",protect,groupController.leaveGroup);
 router.get("/:groupId/members",protect,groupController.getGroupMembers);
 router.patch("/:groupId",protect,groupController.updateGroup);
 router.delete("/:groupId",protect,groupController.deleteGroup);
+router.post("/:groupId/start",protect,groupController.startGroup);
 // GET /api/v1/groups/:id/contributions — all contributions for a group (Edlawit-owned)
 router.get('/:id/contributions', getGroupContributions);
 

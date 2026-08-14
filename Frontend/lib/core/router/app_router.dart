@@ -1,5 +1,27 @@
 import 'package:flutter/material.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
+import '../../features/auth/presentation/pages/onboarding_page.dart';
+import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/register_page.dart';
+import '../../features/auth/presentation/pages/otp_verification_page.dart';
+import '../../features/auth/presentation/pages/forgot_password_page.dart';
+import '../../features/auth/presentation/pages/reset_password_page.dart';
+import '../../features/auth/presentation/pages/biometric_setup_page.dart';
+import '../../features/groups/presentation/pages/my_groups_page.dart';
+import '../../features/groups/presentation/pages/create_group_page.dart';
+import '../../features/groups/presentation/pages/join_group_page.dart';
+import '../../features/groups/presentation/pages/group_detail_page.dart';
+import '../../features/groups/presentation/pages/group_members_page.dart';
+import '../../features/groups/presentation/pages/group_dashboard_page.dart';
+import '../../features/groups/presentation/pages/group_settings_page.dart';
+import '../../features/groups/presentation/pages/group_activity_page.dart';
+import '../../features/groups/presentation/pages/invite_members_page.dart';
+import '../../features/profile/presentation/pages/profile_page.dart';
+import '../../features/profile/presentation/pages/edit_profile_page.dart';
+import '../../features/profile/presentation/pages/change_password_page.dart';
+import '../../features/notifications/presentation/pages/notifications_page.dart';
+import '../../features/notifications/presentation/pages/notification_detail_page.dart';
+import '../../features/notifications/presentation/pages/notification_settings_page.dart';
 import '../../features/reports/presentation/pages/home_dashboard_page.dart';
 import '../../features/reports/presentation/pages/analytics_dashboard_page.dart';
 import '../../features/reports/presentation/pages/export_report_page.dart';
@@ -21,14 +43,67 @@ import '../../features/settings/presentation/pages/active_sessions_page.dart';
 import '../../features/settings/presentation/pages/help_support_page.dart';
 
 Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
-  final name = settings.name ?? '/home';
+  final name = settings.name ?? '/';
   final args = settings.arguments;
 
   Widget page;
 
+  // Entry & Auth Routes (Etsub)
   if (name == '/' || name == '/splash') {
     page = const SplashPage();
-  } else if (name == '/home') {
+  } else if (name == '/onboarding') {
+    page = const OnboardingPage();
+  } else if (name == '/login') {
+    page = const LoginPage();
+  } else if (name == '/register') {
+    page = const RegisterPage();
+  } else if (name == '/otp') {
+    page = const OtpVerificationPage();
+  } else if (name == '/forgot-password') {
+    page = const ForgotPasswordPage();
+  } else if (name == '/reset-password') {
+    page = const ResetPasswordPage();
+  } else if (name == '/biometric-setup') {
+    page = const BiometricSetupPage();
+  }
+  // Group Management Routes (Etsub)
+  else if (name == '/groups') {
+    page = const MyGroupsPage();
+  } else if (name == '/groups/create') {
+    page = const CreateGroupPage();
+  } else if (name == '/groups/join') {
+    page = const JoinGroupPage();
+  } else if (name == '/groups/detail') {
+    page = const GroupDetailPage();
+  } else if (name == '/groups/members') {
+    page = const GroupMembersPage();
+  } else if (name == '/groups/dashboard') {
+    page = const GroupDashboardPage();
+  } else if (name == '/groups/settings') {
+    page = const GroupSettingsPage();
+  } else if (name == '/groups/activity') {
+    page = const GroupActivityPage();
+  } else if (name == '/groups/invite') {
+    page = const InviteMembersPage();
+  }
+  // User Profile Routes (Etsub)
+  else if (name == '/profile') {
+    page = const ProfilePage();
+  } else if (name == '/profile/edit') {
+    page = const EditProfilePage();
+  } else if (name == '/change-password') {
+    page = const ChangePasswordPage();
+  }
+  // Notification Routes (Etsub)
+  else if (name == '/notifications') {
+    page = const NotificationsPage();
+  } else if (name == '/notifications/detail') {
+    page = const NotificationDetailPage();
+  } else if (name == '/notifications/settings') {
+    page = const NotificationSettingsPage();
+  }
+  // Edlawit Routes
+  else if (name == '/home') {
     page = const HomeDashboardPage();
   } else if (name == '/wallet') {
     page = const WalletPage();
@@ -69,11 +144,6 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
     page = const ActiveSessionsPage();
   } else if (name == '/settings/help') {
     page = const HelpSupportPage();
-  } else if (name == '/profile' || name == '/change-password' || name == '/notifications/settings') {
-    page = Scaffold(
-      appBar: AppBar(title: Text(name.replaceAll('/', ' ').toUpperCase(), style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold))),
-      body: Center(child: Text('$name Page (Etsub\'s Module)', style: const TextStyle(fontFamily: 'Poppins', fontSize: 16))),
-    );
   } else {
     page = const HomeDashboardPage();
   }

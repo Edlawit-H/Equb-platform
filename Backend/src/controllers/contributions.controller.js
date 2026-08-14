@@ -33,6 +33,20 @@ export const payContribution = asyncWrapper(async (req, res) => {
 
     const memberId = await resolveMember(client, req.userId, group_id);
 
+    // Verify the cycle_number matches the group's current active cycle
+    const { rows: groupRows } = await client.query(
+      `SELECT current_cycle, status FROM equb_groups WHERE group_id = $1`,
+      [group_id]
+    );
+    if (groupRows.length === 0) throw new AppError('Group not found', 404);
+    if (groupRows[0].status !== 'active') throw new AppError('Group is not active', 400);
+    if (Number(cycle_number) !== Number(groupRows[0].current_cycle)) {
+      throw new AppError(
+        `Cannot pay for cycle ${cycle_number}. The current active cycle is ${groupRows[0].current_cycle}`,
+        400
+      );
+    }
+
     const { rows: cRows } = await client.query(
       `SELECT contribution_id, amount, status
        FROM contributions
