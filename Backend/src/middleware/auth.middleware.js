@@ -1,6 +1,8 @@
 import jwt from 'jsonwebtoken';
 import { AppError } from '../utils/AppError.js';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'equb_default_secret_key_change_in_production';
+
 export const protect = (req, _res, next) => {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
@@ -9,7 +11,7 @@ export const protect = (req, _res, next) => {
 
   const token = header.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET ?? '');
+    const decoded = jwt.verify(token, JWT_SECRET);
     req.userId = decoded.userId;
     req.userRole = decoded.role;
     req.user = decoded;

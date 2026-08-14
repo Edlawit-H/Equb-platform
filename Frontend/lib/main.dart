@@ -15,7 +15,7 @@ class EqubApp extends StatelessWidget {
     return MaterialApp(
       title: 'Equb',
       theme: AppTheme.light,
-      initialRoute: '/home',
+      initialRoute: '/',
       onGenerateRoute: onGenerateAppRoute,
       debugShowCheckedModeBanner: false,
     );

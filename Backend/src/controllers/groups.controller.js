@@ -127,7 +127,22 @@ export async function getGroupMembers(req, res, next) {
 export const addMember = async (_req, _res, _next) => {};
 export const removeMember = async (_req, _res, _next) => {};
 export const updateMemberRole = async (_req, _res, _next) => {};
-export const startGroup = async (_req, _res, _next) => {};
+export const startGroup = async (req, res, next) => {
+  try {
+    const { groupId } = req.params;
+    const userId = req.user.userId;
+
+    const result = await groupService.startGroup(groupId, userId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Group started successfully',
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 export const endGroup = async (_req, _res, _next) => {};
 export const getGroupDashboard = async (_req, _res, _next) => {};
 export const getGroupActivity = async (_req, _res, _next) => {};

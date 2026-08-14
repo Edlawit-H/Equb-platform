@@ -1,45 +1,99 @@
 import cron from 'node-cron';
 import { pool } from '../db/pool.js';
 import { notifyOverdueAlert, notifyPaymentReminder } from './notification.service.js';
+import { advanceCycle } from './payout.service.js';
 
 export const startCronJobs = () => {
+
+  // Every hour: mark overdue contributions
   cron.schedule('0 * * * *', async () => {
-    await pool.query(
-      `UPDATE contributions SET status = 'overdue'
-       WHERE due_date < NOW() AND status = 'pending'`
-    );
+    try {
+      const { rows: overdueRows } = await pool.query(
+        `UPDATE contributions
+         SET status = 'overdue'
+         WHERE due_date < CURRENT_DATE AND status = 'pending'
+         RETURNING contribution_id, member_id, group_id, amount`
+      );
 
-    const { rows } = await pool.query(
-      `SELECT c.contribution_id, c.member_id, c.group_id, c.amount,
-              gm.user_id, eg.group_name,
-              u2.user_id AS admin_user_id
-       FROM contributions c
-       JOIN group_members gm ON gm.member_id = c.member_id
-       JOIN equb_groups eg ON eg.group_id = c.group_id
-       JOIN group_members admin_gm ON admin_gm.group_id = c.group_id AND admin_gm.role = 'admin'
-       JOIN users u2 ON u2.user_id = admin_gm.user_id
-       WHERE c.status = 'overdue'`
-    );
+      if (overdueRows.length === 0) return;
 
-    for (const row of rows) {
-      await notifyOverdueAlert(row.user_id, row.admin_user_id, row.group_name, row.amount);
+      const ids = overdueRows.map(r => r.contribution_id);
+      const { rows } = await pool.query(
+        `SELECT c.contribution_id, gm.user_id, eg.group_name, c.amount,
+                admin_u.user_id AS admin_user_id
+         FROM contributions c
+         JOIN group_members gm ON gm.member_id = c.member_id
+         JOIN equb_groups eg ON eg.group_id = c.group_id
+         JOIN group_members admin_gm ON admin_gm.group_id = c.group_id AND admin_gm.role = 'admin'
+         JOIN users admin_u ON admin_u.user_id = admin_gm.user_id
+         WHERE c.contribution_id = ANY($1)`,
+        [ids]
+      );
+
+      for (const row of rows) {
+        await notifyOverdueAlert(
+          row.user_id,
+          row.admin_user_id,
+          row.group_name,
+          row.amount
+        ).catch(() => {});
+      }
+    } catch (err) {
+      console.error('Overdue cron error:', err.message);
     }
   });
 
+  // Daily at 9AM: send payment reminders (48h and 24h before deadline)
   cron.schedule('0 9 * * *', async () => {
-    const { rows } = await pool.query(
-      `SELECT c.contribution_id, gm.user_id, eg.group_name, c.amount, c.due_date,
-              EXTRACT(EPOCH FROM (c.due_date - NOW())) / 3600 AS hours_until_due
-       FROM contributions c
-       JOIN group_members gm ON gm.member_id = c.member_id
-       JOIN equb_groups eg ON eg.group_id = c.group_id
-       WHERE c.status = 'pending'
-         AND c.due_date > NOW()
-         AND EXTRACT(EPOCH FROM (c.due_date - NOW())) / 3600 BETWEEN 23 AND 49`
-    );
+    try {
+      const { rows } = await pool.query(
+        `SELECT c.contribution_id, gm.user_id, eg.group_name, c.amount, c.due_date
+         FROM contributions c
+         JOIN group_members gm ON gm.member_id = c.member_id
+         JOIN equb_groups eg ON eg.group_id = c.group_id
+         WHERE c.status = 'pending'
+           AND c.due_date > CURRENT_DATE
+           AND c.due_date <= CURRENT_DATE + INTERVAL '2 days'`
+      );
 
-    for (const row of rows) {
-      await notifyPaymentReminder(row.user_id, row.group_name, row.amount, new Date(row.due_date));
+      for (const row of rows) {
+        await notifyPaymentReminder(
+          row.user_id,
+          row.group_name,
+          row.amount,
+          new Date(row.due_date)
+        ).catch(() => {});
+      }
+    } catch (err) {
+      console.error('Payment reminder cron error:', err.message);
     }
   });
+
+  // Every hour: advance cycle when cycle_end_date has passed AND payout was issued
+  // Both conditions must be true before next cycle starts
+  cron.schedule('30 * * * *', async () => {
+    try {
+      const { rows: expiredGroups } = await pool.query(
+        `SELECT eg.group_id
+         FROM equb_groups eg
+         WHERE eg.status = 'active'
+           AND eg.cycle_end_date < CURRENT_DATE
+           AND EXISTS (
+             SELECT 1 FROM payouts p
+             WHERE p.group_id = eg.group_id
+               AND p.cycle_number = eg.current_cycle
+               AND p.status = 'completed'
+           )`
+      );
+
+      for (const group of expiredGroups) {
+        await advanceCycle(group.group_id).catch((err) => {
+          console.error(`advanceCycle failed for group ${group.group_id}:`, err.message);
+        });
+      }
+    } catch (err) {
+      console.error('Cycle advance cron error:', err.message);
+    }
+  });
+
 };

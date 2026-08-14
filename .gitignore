@@ -104,3 +104,8 @@ Frontend/android/.gradle/
 Frontend/ios/Pods/
 Frontend/ios/.symlinks/
 Frontend/assets/fonts/
+
+# Local testing and planning docs
+postman_testing_guide.md
+testing_guide.md
+sprint*.md
