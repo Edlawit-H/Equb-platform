@@ -49,7 +49,26 @@ next(err);
 }
 };
 export const logout = async (_req, _res, _next) => {};
-export const refreshToken = async (_req, _res, _next) => {};
+
+
+export const refreshToken = async (req, res, next) => {
+  try {
+
+    const result =
+      await authService.refreshAccessToken(
+        req.body.refreshToken
+      );
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const forgotPassword = async (req, res, next) => {
 try{
 
@@ -75,7 +94,22 @@ res.json(result);
 next(err);
 }    
 };
-export const resendOtp = async (_req, _res, _next) => {};
+export const resendOTP = async (req, res, next) => {
+  try {
+
+    const result = await authService.resendRegistrationOTP(
+      req.body
+    );
+
+    res.status(200).json({
+      success: true,
+      message: result.message
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
 export const checkPhone = async (_req, _res, _next) => {};
 export const enableBiometric = async (_req, _res, _next) => {};
 export const registerDevice = async (_req, _res, _next) => {};

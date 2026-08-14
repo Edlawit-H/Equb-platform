@@ -5,6 +5,8 @@ import {
  login,
  forgotPassword,
  resetPassword,
+ resendOTP,
+ refreshToken
 } from "../controllers/auth.controller.js";
 import * as userController from "../controllers/users.controller.js";
 
@@ -17,12 +19,17 @@ router.post("/register", register);
 
 router.post("/verify-otp", verifyOTP);
 
+router.post("/resend-otp", resendOTP);
+
 router.post("/login", login);
 
 router.post("/forgot-password",forgotPassword);
 
 router.post("/reset-password",resetPassword);
-export default router;
+
+router.post("/refresh-token", refreshToken);
 
 router.get("/profile",protect,userController.getMyProfile);
 router.put("/profile",protect,userController.updateMyProfile);
+
+export default router;
