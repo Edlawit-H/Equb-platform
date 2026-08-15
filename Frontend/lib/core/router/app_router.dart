@@ -68,13 +68,13 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
   }
   // Group Management Routes (Etsub)
   else if (name == '/groups') {
-    page = const MyGroupsPage();
+    page = const GroupsPage();
   } else if (name == '/groups/create') {
-    page = const CreateGroupPage();
+    page = const CreateGroupScreen();
   } else if (name == '/groups/join') {
     page = const JoinGroupPage();
   } else if (name == '/groups/detail') {
-    page = const GroupDetailPage();
+    page = const GroupDetailsPage();
   } else if (name == '/groups/members') {
     page = const GroupMembersPage();
   } else if (name == '/groups/dashboard') {
