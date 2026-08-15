@@ -54,15 +54,15 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
   } else if (name == '/onboarding') {
     page = const OnboardingPage();
   } else if (name == '/login') {
-    page = const LoginPage();
+    page = const LoginScreen();
   } else if (name == '/register') {
-    page = const RegisterPage();
+    page = const RegisterScreen();
   } else if (name == '/otp') {
-    page = const OtpVerificationPage();
+    page = const OtpScreen();
   } else if (name == '/forgot-password') {
-    page = const ForgotPasswordPage();
+    page = const ForgotPasswordScreen();
   } else if (name == '/reset-password') {
-    page = const ResetPasswordPage();
+    page = const ResetPasswordScreen();
   } else if (name == '/biometric-setup') {
     page = const BiometricSetupPage();
   }
