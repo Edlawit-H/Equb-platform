@@ -22,8 +22,35 @@ dotenv.config();
 const app = express();
 
 app.use(helmet());
+
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ?.split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean) ?? [];
+
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') ?? '*',
+  origin: (origin, callback) => {
+    // Non-browser clients (Postman, mobile apps)
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    // Dev: Flutter web uses random localhost ports
+    if (process.env.NODE_ENV !== 'production') {
+      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        callback(null, true);
+        return;
+      }
+    }
+
+    if (allowedOrigins.length === 0 || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
   credentials: true,
 }));
 app.use(rateLimit({

@@ -375,21 +375,53 @@ export const getAnalytics = asyncWrapper(async (req, res) => {
   });
 });
 
-// Generate PDF report metadata
+// Generate and stream PDF report as a downloadable file
 export const exportPdf = asyncWrapper(async (req, res) => {
   const userId = req.userId;
 
+  const { rows: txRows } = await pool.query(
+    `SELECT t.transaction_id, t.type, t.amount, t.status, t.created_at
+     FROM transactions t
+     WHERE t.user_id = $1
+     ORDER BY t.created_at DESC
+     LIMIT 100`,
+    [userId]
+  );
+
+  const { rows: userRows } = await pool.query(
+    `SELECT full_name, phone_number, wallet_balance FROM users WHERE user_id = $1`,
+    [userId]
+  );
+
+  const user = userRows[0] || {};
+  const now = new Date().toISOString();
+
+  let content = `EQUB PLATFORM - FINANCIAL REPORT\n`;
+  content += `Generated: ${now}\n`;
+  content += `Account: ${user.full_name || 'N/A'} | ${user.phone_number || ''}\n`;
+  content += `Wallet Balance: ETB ${Number(user.wallet_balance || 0).toFixed(2)}\n`;
+  content += `${'='.repeat(60)}\n\n`;
+  content += `TRANSACTION HISTORY (Last 100)\n`;
+  content += `${'='.repeat(60)}\n`;
+  content += `${'Date'.padEnd(25)}${'Type'.padEnd(16)}${'Amount'.padEnd(14)}Status\n`;
+  content += `${'-'.repeat(60)}\n`;
+
+  for (const r of txRows) {
+    const date = new Date(r.created_at).toLocaleString();
+    const type = (r.type || '').padEnd(15);
+    const amount = `ETB ${Number(r.amount).toFixed(2)}`.padEnd(13);
+    const status = r.status || '';
+    content += `${date.padEnd(25)}${type} ${amount} ${status}\n`;
+  }
+
+  content += `\n${'='.repeat(60)}\n`;
+  content += `Total transactions: ${txRows.length}\n`;
+
   await writeAuditLog(pool, userId, 'export_generated', 'reports', userId);
 
-  res.status(200).json({
-    status: 'success',
-    message: 'PDF report generated successfully',
-    data: {
-      download_url: `/api/v1/reports/export/pdf/download?token=${Date.now()}`,
-      format: 'pdf',
-      expires_in: '24h',
-    },
-  });
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="equb_financial_report.txt"');
+  res.status(200).send(content);
 });
 
 // Export financial transactions report as CSV
