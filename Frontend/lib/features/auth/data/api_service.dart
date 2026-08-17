@@ -1,60 +1,63 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
-//import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:equb_app/core/constants/api_constants.dart';
 
 class ApiService {
- // static const _storage = FlutterSecureStorage(); 
-  static const String baseUrl = "http://localhost:3000/api/v1/auth";
-  
+  static const _storage = FlutterSecureStorage();
+  static String get baseUrl => ApiConstants.authBaseUrl;
+
+  /// Saves access token using the same key that dio_client.dart reads ('access_token')
   static Future<void> saveToken(String token) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('token', token);
-}
+    await _storage.write(key: 'access_token', value: token);
+  }
 
 
 static Future<void> saveRefreshToken(String refreshToken) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('refreshToken', refreshToken);
-}
+    await _storage.write(key: 'refresh_token', value: refreshToken);
+  }
 
   
   static Future<Map<String, dynamic>> login(
       String phone, String password) async {
     try {
       final response = await http.post(
-      Uri.parse("$baseUrl/login"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "phone_number": phone,
-        "password": password,
-      }),);
-    final data = jsonDecode(response.body);
-    if (response.statusCode == 200) {   
-    await saveToken(data['data']['accessToken']);
-    await saveRefreshToken(data['data']['refreshToken']);
-    
-    return data;
-    } else {
-      throw  Exception(data["message"]);
-    }
-  } catch (e){
-  throw Exception(e.toString());
-}
+        Uri.parse("$baseUrl/login"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "phone_number": phone,
+          "password": password,
+        }),
+      );
 
-}
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        await saveToken(data['data']['accessToken']);
+        await saveRefreshToken(data['data']['refreshToken']);
+        return data;
+      }
+
+      throw Exception(data['message'] ?? 'Login failed');
+    } on Exception {
+      rethrow;
+    } catch (e) {
+      throw Exception(
+        'Unable to reach the server. Check that the backend is running on port 5000.',
+      );
+    }
+  }
   static Future<Map<String, dynamic>> getUserData() async {
-  final prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString('token');
-  final response = await http.get(
-    Uri.parse("$baseUrl/user"),
-    headers: {
-      "Authorization": "Bearer $token",
-    },
-  );
-  return jsonDecode(response.body);
-}
+    final token = await _storage.read(key: 'access_token');
+    final response = await http.get(
+      Uri.parse("$baseUrl/user"),
+      headers: {
+        "Authorization": "Bearer $token",
+      },
+    );
+    return jsonDecode(response.body);
+  }
 
 static Future<Map<String, dynamic>> register({
   required String phone,

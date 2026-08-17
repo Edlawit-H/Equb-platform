@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:equb_app/core/constants/api_constants.dart';
 
 class GroupService {
-  final String baseUrl = "http://localhost:3000/api/v1";
+  String get baseUrl => ApiConstants.baseUrl;
   
   Future<Map<String, dynamic>> createGroup({
      required String groupName,

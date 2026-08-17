@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/loading_overlay.dart';
+import '../../../../core/widgets/error_snackbar.dart';
 import '../../data/wallet_service.dart';
 
 class WalletPage extends StatefulWidget {
@@ -13,17 +14,18 @@ class WalletPage extends StatefulWidget {
 class _WalletPageState extends State<WalletPage> {
   final _service = WalletService();
   Map<String, dynamic> _wallet = {
-    'wallet_balance': 12500.0,
-    'full_name': 'Equb User',
+    'wallet_balance': 0.0,
+    'full_name': '',
   };
   Map<String, dynamic> _stats = {
     'stats': {
-      'top_up': {'total_amount': 15000.0},
-      'contribution_debit': {'total_amount': 4500.0},
-      'payout_credit': {'total_amount': 12000.0},
+      'top_up': {'total_amount': 0.0, 'count': 0},
+      'contribution_debit': {'total_amount': 0.0, 'count': 0},
+      'payout_credit': {'total_amount': 0.0, 'count': 0},
     }
   };
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -32,22 +34,30 @@ class _WalletPageState extends State<WalletPage> {
   }
 
   Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final results = await Future.wait([
         _service.getWallet(),
         _service.getTransactionStats(),
       ]);
-      if (mounted && results[0].isNotEmpty) {
+      if (mounted) {
         setState(() {
           _wallet = results[0];
           _stats = results[1];
           _loading = false;
         });
-      } else {
-        if (mounted) setState(() => _loading = false);
       }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Failed to load wallet data';
+        });
+        ErrorSnackbar.show(context, 'Unable to fetch wallet balance from server');
+      }
     }
   }
 
@@ -71,6 +81,31 @@ class _WalletPageState extends State<WalletPage> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
+                if (_error != null)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.error.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline_rounded, color: AppTheme.error, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _error!,
+                            style: const TextStyle(fontFamily: 'Poppins', color: AppTheme.error, fontSize: 13),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _load,
+                          child: const Text('Retry', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: AppTheme.error)),
+                        )
+                      ],
+                    ),
+                  ),
                 _WalletCard(wallet: _wallet, onTopUp: _openTopUp),
                 const SizedBox(height: 20),
                 _StatsRow(stats: _stats),
@@ -97,6 +132,10 @@ class _WalletCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final balance = (wallet['wallet_balance'] ?? 0);
+    final formattedBalance = (balance is num ? balance.toDouble() : double.tryParse('$balance') ?? 0.0).toStringAsFixed(2);
+    final userName = wallet['full_name'] ?? 'Equb Account';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -107,7 +146,13 @@ class _WalletCard extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: AppTheme.primary.withOpacity(0.35), blurRadius: 20, offset: const Offset(0, 8))],
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primary.withValues(alpha: 0.35),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -115,33 +160,46 @@ class _WalletCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Wallet Balance', style: TextStyle(color: Colors.white70, fontFamily: 'Poppins', fontSize: 14)),
+              Text(
+                userName.isNotEmpty ? userName : 'Equb Account',
+                style: const TextStyle(color: Colors.white70, fontFamily: 'Poppins', fontSize: 14),
+              ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
-                child: const Text('Active', style: TextStyle(color: Colors.white, fontFamily: 'Poppins', fontSize: 12)),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text('Live Balance', style: TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'Poppins', fontWeight: FontWeight.w500)),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
-            'ETB ${(wallet['wallet_balance'] ?? 0).toDouble().toStringAsFixed(2)}',
-            style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+            'ETB $formattedBalance',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 34,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'Poppins',
+              letterSpacing: 0.5,
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(wallet['full_name'] ?? '', style: const TextStyle(color: Colors.white60, fontSize: 13, fontFamily: 'Poppins')),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: onTopUp,
-              icon: const Icon(Icons.add_rounded, size: 20),
-              label: const Text('Top Up Wallet', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
+              icon: const Icon(Icons.add_rounded, color: AppTheme.primary, size: 20),
+              label: const Text(
+                'Top Up Wallet',
+                style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontFamily: 'Poppins', fontSize: 15),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
-                foregroundColor: AppTheme.primary,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                elevation: 0,
               ),
             ),
           ),
@@ -158,28 +216,21 @@ class _StatsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = stats['stats'] as Map<String, dynamic>? ?? {};
+    final topUp = (s['top_up']?['total_amount'] ?? 0);
+    final debited = (s['contribution_debit']?['total_amount'] ?? 0);
+    final payout = (s['payout_credit']?['total_amount'] ?? 0);
+
+    final topUpVal = (topUp is num ? topUp.toDouble() : double.tryParse('$topUp') ?? 0.0);
+    final debitedVal = (debited is num ? debited.toDouble() : double.tryParse('$debited') ?? 0.0);
+    final payoutVal = (payout is num ? payout.toDouble() : double.tryParse('$payout') ?? 0.0);
+
     return Row(
       children: [
-        Expanded(child: _StatCard(
-          label: 'Top-Ups',
-          amount: ((s['top_up']?['total_amount']) ?? 0).toDouble(),
-          color: AppTheme.secondary,
-          icon: Icons.arrow_downward_rounded,
-        )),
-        const SizedBox(width: 12),
-        Expanded(child: _StatCard(
-          label: 'Paid Out',
-          amount: ((s['contribution_debit']?['total_amount']) ?? 0).toDouble(),
-          color: AppTheme.error,
-          icon: Icons.arrow_upward_rounded,
-        )),
-        const SizedBox(width: 12),
-        Expanded(child: _StatCard(
-          label: 'Received',
-          amount: ((s['payout_credit']?['total_amount']) ?? 0).toDouble(),
-          color: AppTheme.primary,
-          icon: Icons.star_rounded,
-        )),
+        _StatCard(label: 'Total Top-Up', amount: topUpVal, color: AppTheme.success, icon: Icons.arrow_downward_rounded),
+        const SizedBox(width: 10),
+        _StatCard(label: 'Contributed', amount: debitedVal, color: AppTheme.error, icon: Icons.arrow_upward_rounded),
+        const SizedBox(width: 10),
+        _StatCard(label: 'Payouts', amount: payoutVal, color: AppTheme.secondary, icon: Icons.monetization_on_rounded),
       ],
     );
   }
@@ -194,21 +245,31 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(height: 6),
-          Text('ETB ${amount.toStringAsFixed(0)}', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: color, fontSize: 13)),
-          Text(label, style: const TextStyle(color: AppTheme.grayText, fontSize: 11, fontFamily: 'Poppins')),
-        ],
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 18),
+            const SizedBox(height: 8),
+            Text(
+              'ETB ${amount.toStringAsFixed(0)}',
+              style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 13, color: color),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            Text(label, style: const TextStyle(fontFamily: 'Poppins', color: AppTheme.grayText, fontSize: 10)),
+          ],
+        ),
       ),
     );
   }
@@ -217,18 +278,29 @@ class _StatCard extends StatelessWidget {
 class _TransactionHistoryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return Container(
       width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: () => Navigator.pushNamed(context, '/transactions'),
-        icon: const Icon(Icons.history_rounded),
-        label: const Text('View All Transactions', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppTheme.primary,
-          side: const BorderSide(color: AppTheme.primary),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: ListTile(
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: AppTheme.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.receipt_long_rounded, color: AppTheme.primary, size: 20),
         ),
+        title: const Text('Transaction History', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 14)),
+        subtitle: const Text('View all deposits, payouts & payments', style: TextStyle(fontFamily: 'Poppins', color: AppTheme.grayText, fontSize: 11)),
+        trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.grayText),
+        onTap: () => Navigator.pushNamed(context, '/transactions'),
       ),
     );
   }
