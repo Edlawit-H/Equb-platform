@@ -22,7 +22,7 @@ import '../../features/profile/presentation/pages/change_password_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/notifications/presentation/pages/notification_detail_page.dart';
 import '../../features/notifications/presentation/pages/notification_settings_page.dart';
-import '../../features/reports/presentation/pages/home_dashboard_page.dart';
+import '../../features/dashboard/presentation/home_screen.dart';
 import '../../features/reports/presentation/pages/analytics_dashboard_page.dart';
 import '../../features/reports/presentation/pages/export_report_page.dart';
 import '../../features/wallet/presentation/pages/wallet_page.dart';
@@ -102,9 +102,9 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
   } else if (name == '/notifications/settings') {
     page = const NotificationSettingsPage();
   }
-  // Edlawit Routes
-  else if (name == '/home') {
-    page = const HomeDashboardPage();
+  // Core Routes
+  else if (name == '/home' || name == '/dashboard') {
+    page = const HomeScreen();
   } else if (name == '/wallet') {
     page = const WalletPage();
   } else if (name == '/wallet/top-up') {
@@ -145,7 +145,7 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
   } else if (name == '/settings/help') {
     page = const HelpSupportPage();
   } else {
-    page = const HomeDashboardPage();
+    page = const HomeScreen();
   }
 
   return MaterialPageRoute(builder: (_) => page, settings: settings);

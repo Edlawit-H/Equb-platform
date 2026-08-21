@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../data/group_service.dart';
+import '../../../contributions/data/contributions_service.dart';
+import '../../../reports/data/reports_service.dart';
 
 class GroupDetailsPage extends StatefulWidget {
   final Map<String, dynamic>? group;
@@ -15,20 +18,26 @@ class GroupDetailsPage extends StatefulWidget {
 
 class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final _groupService = GroupService();
+  final _reportsService = ReportsService();
+  final _contributionsService = ContributionsService();
 
-  static const Color headerColor = Color(0xFF9E3A00);
-  static const Color textDark = Color(0xFF0F172A);
-  static const Color textMuted = Color(0xFF64748B);
-  static const Color primaryOrange = Color(0xFFFF5C00);
+  List<Map<String, dynamic>> _members = [];
+  Map<String, dynamic> _groupSummary = {};
+  bool _isLoading = true;
+
+  static const Color headerColor = Color(0xFFEA580C);
+  static const Color primaryOrange = Color(0xFFF97316);
+  static const Color textDark = Color(0xFF111827);
+  static const Color textMuted = Color(0xFF6B7280);
   static const Color activeGreen = Color(0xFF16A34A);
   static const Color activeGreenBg = Color(0xFFDCFCE7);
-  static const Color pendingOrange = Color(0xFFC2410C);
-  static const Color pendingOrangeBg = Color(0xFFFEE8DC);
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadDetails();
   }
 
   @override
@@ -37,109 +46,179 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
     super.dispose();
   }
 
-  void _showContributionModal(BuildContext context, String groupName, String amount) {
+  String get _groupId => widget.group?["group_id"] ?? widget.group?["id"] ?? "";
+
+  Future<void> _loadDetails() async {
+    if (_groupId.isEmpty) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final futures = await Future.wait([
+        _groupService.getGroupMembers(_groupId).catchError((_) => <String, dynamic>{}),
+        _reportsService.getGroupSummary(_groupId).catchError((_) => <String, dynamic>{}),
+      ]);
+
+      final membersRes = futures[0];
+      final summaryRes = futures[1];
+
+      if (mounted) {
+        setState(() {
+          if (membersRes["data"] != null && membersRes["data"] is List) {
+            _members = List<Map<String, dynamic>>.from(membersRes["data"]);
+          } else {
+            _members = [];
+          }
+          _groupSummary = summaryRes;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading group details: $e");
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showContributionModal(BuildContext context, String groupName, dynamic amount) {
+    final numAmount = amount is num ? amount.toDouble() : double.tryParse('$amount') ?? 0.0;
+    bool isPaying = false;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCBD5E1),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                "Contribute to $groupName",
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: textDark,
+                  fontFamily: 'Poppins',
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Contribution Amount: ETB ${numAmount.toStringAsFixed(2)}",
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: primaryOrange,
+                  fontFamily: 'Poppins',
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFCBD5E1),
-                  borderRadius: BorderRadius.circular(2),
+                  color: const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: primaryOrange.withValues(alpha: 0.2)),
                 ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              "Contribute to $groupName",
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: textDark,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Due Contribution Amount: $amount",
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: headerColor,
-              ),
-            ),
-            const SizedBox(height: 20),
-            // Payment method selector
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.account_balance_wallet_rounded, color: primaryOrange),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Equb Digital Wallet",
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-                        ),
-                        Text(
-                          "Balance: ETB 12,500.00",
-                          style: TextStyle(color: textMuted, fontSize: 12),
-                        ),
-                      ],
+                child: const Row(
+                  children: [
+                    Icon(Icons.account_balance_wallet_rounded, color: primaryOrange),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Payment Method",
+                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, fontFamily: 'Poppins'),
+                          ),
+                          Text(
+                            "Equb Digital Wallet Balance",
+                            style: TextStyle(color: textMuted, fontSize: 12, fontFamily: 'Poppins'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  Icon(Icons.check_circle_rounded, color: primaryOrange),
-                ],
+                    Icon(Icons.check_circle_rounded, color: primaryOrange),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("Contribution of $amount completed successfully!"),
-                      backgroundColor: const Color(0xFF10B981),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: isPaying
+                      ? null
+                      : () async {
+                          setModalState(() => isPaying = true);
+                          try {
+                            final cycle = widget.group?["current_cycle"] ?? 1;
+                            final cycleNum = cycle is int ? cycle : int.tryParse('$cycle') ?? 1;
+                            await _contributionsService.pay(_groupId, cycleNum);
+
+                            if (!context.mounted) return;
+                            Navigator.pop(ctx);
+                            _loadDetails();
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("Contribution of ETB ${numAmount.toStringAsFixed(2)} completed!"),
+                                backgroundColor: const Color(0xFF16A34A),
+                              ),
+                            );
+                          } catch (e) {
+                            setModalState(() => isPaying = false);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(e.toString().replaceAll("Exception: ", "")),
+                                backgroundColor: const Color(0xFFDC2626),
+                              ),
+                            );
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryOrange,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: headerColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    elevation: 0,
                   ),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  "Confirm & Pay",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  child: isPaying
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text(
+                          "Confirm & Pay",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, fontFamily: 'Poppins'),
+                        ),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+            ],
+          ),
         ),
       ),
     );
@@ -147,15 +226,13 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
-    final groupTitle = widget.group?["title"] ?? widget.group?["group_name"] ?? "Friends Equb";
-    final groupAmount = widget.group?["amount"] != null
-        ? "ETB ${widget.group!["amount"]} / Month"
-        : (widget.group?["contribution_amount"] != null
-            ? "ETB ${widget.group!["contribution_amount"]} / Month"
-            : "ETB 1,000 / Month");
+    final groupTitle = widget.group?["group_name"] ?? widget.group?["title"] ?? "Equb Circle";
+    final amountVal = widget.group?["contribution_amount"] ?? widget.group?["amount"] ?? 0;
+    final groupAmount = "ETB $amountVal / Cycle";
+    final inviteCode = widget.group?["invitation_code"] ?? "";
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: const Color(0xFFF9FAFB),
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
         child: AppBar(
@@ -178,49 +255,69 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
             style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
-              fontSize: 19,
-              letterSpacing: 0.2,
+              fontSize: 18,
+              fontFamily: 'Poppins',
             ),
           ),
           centerTitle: true,
+          actions: [
+            if (inviteCode.isNotEmpty)
+              IconButton(
+                icon: const Icon(Icons.share_rounded, color: Colors.white, size: 20),
+                tooltip: "Invitation Code: $inviteCode",
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: inviteCode));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("Invitation code '$inviteCode' copied to clipboard!"),
+                      backgroundColor: primaryOrange,
+                    ),
+                  );
+                },
+              ),
+          ],
         ),
       ),
-      body: Column(
-        children: [
-          // Top Group Overview Card
-          _buildGroupOverviewCard(groupTitle, groupAmount),
-
-          // Custom Tab Bar (Members | Contributions | Loans)
-          _buildTabBar(),
-
-          // Tab Bar Views
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: primaryOrange))
+          : Column(
               children: [
-                _buildMembersTab(),
-                _buildContributionsTab(),
-                _buildLoansTab(),
+                // Top Group Overview Card
+                _buildGroupOverviewCard(groupTitle, groupAmount, inviteCode),
+
+                // Custom Tab Bar (Members | Contributions | Loans)
+                _buildTabBar(),
+
+                // Tab Bar Views
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildMembersTab(),
+                      _buildContributionsTab(),
+                      _buildLoansTab(),
+                    ],
+                  ),
+                ),
+
+                // Fixed Bottom Action Button: "Make Contribution"
+                _buildBottomAction(groupTitle, amountVal),
               ],
             ),
-          ),
-
-          // Fixed Bottom Action Button: "Make Contribution"
-          _buildBottomAction(groupTitle, groupAmount.split(" / ")[0]),
-        ],
-      ),
     );
   }
 
   /// Top Group Overview Card
-  Widget _buildGroupOverviewCard(String title, String amount) {
+  Widget _buildGroupOverviewCard(String title, String amount, String inviteCode) {
+    final status = (widget.group?["status"] ?? "ACTIVE").toString().toUpperCase();
+
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 16, 20, 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -229,68 +326,105 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         children: [
-          // Peach Icon Container
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFDE8DC),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.people_alt_rounded,
-                color: headerColor,
-                size: 28,
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.groups_rounded,
+                    color: primaryOrange,
+                    size: 26,
+                  ),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          // Title & Amount
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: textDark,
+                        fontFamily: 'Poppins',
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      amount,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: textMuted,
+                        fontWeight: FontWeight.w500,
+                        fontFamily: 'Poppins',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: activeGreenBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  status,
                   style: const TextStyle(
-                    fontSize: 18,
+                    color: activeGreen,
+                    fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    color: textDark,
-                    letterSpacing: -0.3,
+                    fontFamily: 'Poppins',
                   ),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  amount,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: textMuted,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          // ACTIVE Badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: activeGreenBg,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Text(
-              "ACTIVE",
-              style: TextStyle(
-                color: activeGreen,
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.5,
+          if (inviteCode.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.vpn_key_rounded, size: 16, color: primaryOrange),
+                      const SizedBox(width: 8),
+                      Text(
+                        "Code: $inviteCode",
+                        style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w700, fontSize: 13, color: textDark),
+                      ),
+                    ],
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: inviteCode));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Code copied!"), duration: Duration(seconds: 1)),
+                      );
+                    },
+                    child: const Text("Copy", style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 12, color: primaryOrange)),
+                  ),
+                ],
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -310,23 +444,25 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
       ),
       child: TabBar(
         controller: _tabController,
-        indicatorColor: headerColor,
+        indicatorColor: primaryOrange,
         indicatorWeight: 3.0,
         indicatorSize: TabBarIndicatorSize.tab,
-        labelColor: headerColor,
+        labelColor: primaryOrange,
         unselectedLabelColor: textMuted,
         labelStyle: const TextStyle(
-          fontSize: 15,
+          fontSize: 14,
           fontWeight: FontWeight.w700,
+          fontFamily: 'Poppins',
         ),
         unselectedLabelStyle: const TextStyle(
-          fontSize: 15,
+          fontSize: 14,
           fontWeight: FontWeight.w500,
+          fontFamily: 'Poppins',
         ),
-        tabs: const [
-          Tab(text: "Members"),
-          Tab(text: "Contributions"),
-          Tab(text: "Loans"),
+        tabs: [
+          Tab(text: "Members (${_members.length})"),
+          const Tab(text: "Cycle Info"),
+          const Tab(text: "Activity"),
         ],
       ),
     );
@@ -334,351 +470,195 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
 
   /// Members Tab View
   Widget _buildMembersTab() {
-    return ListView(
+    if (_members.isEmpty) {
+      return const Center(
+        child: Text(
+          "No members joined yet",
+          style: TextStyle(fontFamily: 'Poppins', color: textMuted),
+        ),
+      );
+    }
+
+    return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      children: [
-        _buildMemberCard(
-          name: "Sara Ahmed",
-          amount: "ETB 1,000",
-          isPaid: true,
-          avatarUrl: null,
-          initial: null,
-        ),
-        const SizedBox(height: 12),
-        _buildMemberCard(
-          name: "Dawit Tadesse",
-          amount: "ETB 1,000",
-          isPaid: false,
-          avatarUrl: null,
-          initial: null,
-        ),
-        const SizedBox(height: 12),
-        _buildMemberCard(
-          name: "Alemayehu G.",
-          amount: "ETB 1,000",
-          isPaid: true,
-          avatarUrl: null,
-          initial: "A",
-          initialColor: primaryOrange,
-        ),
-        const SizedBox(height: 12),
-        _buildMemberCard(
-          name: "Betelhem M.",
-          amount: "ETB 1,000",
-          isPaid: false,
-          avatarUrl: null,
-          initial: null,
-        ),
-      ],
-    );
-  }
+      itemCount: _members.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, i) {
+        final m = _members[i];
+        final name = m["full_name"] ?? m["name"] ?? "Member ${i + 1}";
+        final role = (m["role"] ?? "member").toString().toUpperCase();
+        final isPaid = m["has_paid"] == true || m["status"] == "paid";
+        final payoutPosition = m["payout_position"] ?? (i + 1);
 
-  /// Member Card Widget matching the design
-  Widget _buildMemberCard({
-    required String name,
-    required String amount,
-    required bool isPaid,
-    String? avatarUrl,
-    String? initial,
-    Color initialColor = primaryOrange,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Avatar
-          if (initial != null)
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: initialColor,
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  initial,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            )
-          else
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFF1F5F9),
-                border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(22),
-                child: const Icon(
-                  Icons.person,
-                  color: Color(0xFF64748B),
-                  size: 26,
-                ),
-              ),
-            ),
-          const SizedBox(width: 14),
-          // Name and Amount
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: textDark,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  amount,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: textMuted,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Status Badge (PAID / PENDING)
-          if (isPaid)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: activeGreenBg,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.check_circle_outline_rounded,
-                    color: activeGreen,
-                    size: 14,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    "PAID",
-                    style: TextStyle(
-                      color: activeGreen,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: pendingOrangeBg,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.access_time_rounded,
-                    color: pendingOrange,
-                    size: 14,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    "PENDING",
-                    style: TextStyle(
-                      color: pendingOrange,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// Contributions Tab View
-  Widget _buildContributionsTab() {
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        // Summary Card
-        Container(
-          padding: const EdgeInsets.all(18),
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
-          child: const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Text(
-                "Cycle Progress",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: textDark),
+              CircleAvatar(
+                backgroundColor: const Color(0xFFFFF7ED),
+                child: Text(
+                  name.isNotEmpty ? name[0].toUpperCase() : "M",
+                  style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: primaryOrange),
+                ),
               ),
-              SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text("Total Pool: ETB 12,000", style: TextStyle(fontWeight: FontWeight.w700, color: headerColor)),
-                  Text("Round 4 of 12", style: TextStyle(color: textMuted, fontWeight: FontWeight.w600)),
-                ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        color: textDark,
+                        fontFamily: 'Poppins',
+                      ),
+                    ),
+                    Text(
+                      "Role: $role • Payout Round: #$payoutPosition",
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: textMuted,
+                        fontFamily: 'Poppins',
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              SizedBox(height: 12),
-              LinearProgressIndicator(
-                value: 4 / 12,
-                color: headerColor,
-                backgroundColor: Color(0xFFF1F5F9),
-                minHeight: 8,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isPaid ? activeGreenBg : const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  isPaid ? "PAID" : "PENDING",
+                  style: TextStyle(
+                    color: isPaid ? activeGreen : primaryOrange,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          "Contribution History",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: textDark),
-        ),
-        const SizedBox(height: 12),
-        _historyItem("Round 3", "Payout recipient: Sara Ahmed", "ETB 12,000", true),
-        _historyItem("Round 2", "Payout recipient: Dawit Tadesse", "ETB 12,000", true),
-        _historyItem("Round 1", "Payout recipient: Alemayehu G.", "ETB 12,000", true),
-      ],
+        );
+      },
     );
   }
 
-  Widget _historyItem(String round, String subtitle, String amount, bool completed) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  /// Contributions / Cycle Summary Tab
+  Widget _buildContributionsTab() {
+    final totalCollected = _groupSummary["total_collected"] ?? 0;
+    final totalPaidOut = _groupSummary["total_paid_out"] ?? 0;
+    final remainingCycles = _groupSummary["remaining_cycles"] ?? 0;
+    final completionPct = (_groupSummary["cycle_completion_percentage"] ?? 0).toDouble();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: activeGreenBg,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.check_rounded, color: activeGreen, size: 18),
+              Expanded(
+                child: _summaryCard("Total Pool", "ETB $totalCollected", Icons.savings_rounded, const Color(0xFF16A34A)),
               ),
               const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(round, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  Text(subtitle, style: const TextStyle(color: textMuted, fontSize: 12)),
-                ],
+              Expanded(
+                child: _summaryCard("Total Paid Out", "ETB $totalPaidOut", Icons.send_rounded, primaryOrange),
               ),
             ],
           ),
-          Text(amount, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: textDark)),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Cycle Completion", style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text("${completionPct.toInt()}%", style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: primaryOrange)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                LinearProgressIndicator(
+                  value: completionPct / 100,
+                  backgroundColor: const Color(0xFFE2E8F0),
+                  valueColor: const AlwaysStoppedAnimation<Color>(primaryOrange),
+                  minHeight: 8,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                const SizedBox(height: 8),
+                Text("Remaining cycles: $remainingCycles", style: const TextStyle(fontFamily: 'Poppins', color: textMuted, fontSize: 12)),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  /// Loans Tab View
+  Widget _summaryCard(String title, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(height: 8),
+          Text(value, style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16, color: textDark)),
+          Text(title, style: const TextStyle(fontFamily: 'Poppins', color: textMuted, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  /// Activity Tab
   Widget _buildLoansTab() {
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Group Emergency Loan Pool",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: textDark),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                "Members can request an emergency loan of up to 50% of total savings.",
-                style: TextStyle(color: textMuted, fontSize: 13),
-              ),
-              const SizedBox(height: 16),
-              const Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text("Available Pool Funds:", style: TextStyle(color: textMuted, fontWeight: FontWeight.w600)),
-                  Text("ETB 6,000.00", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: headerColor)),
-                ],
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Loan request submitted for group review")),
-                    );
-                  },
-                  icon: const Icon(Icons.request_quote_rounded, color: headerColor),
-                  label: const Text("Request Emergency Loan", style: TextStyle(color: headerColor, fontWeight: FontWeight.w700)),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: headerColor),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                ),
-              ),
-            ],
-          ),
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.history_rounded, size: 40, color: textMuted),
+            SizedBox(height: 8),
+            Text("Activity is recorded in real time for every cycle round.", textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Poppins', color: textMuted, fontSize: 13)),
+          ],
         ),
-      ],
+      ),
     );
   }
 
   /// Fixed Bottom Action Button: "Make Contribution"
-  Widget _buildBottomAction(String groupName, String amount) {
+  Widget _buildBottomAction(String groupTitle, dynamic amount) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(
           top: BorderSide(
-            color: Color(0xFFF1F5F9),
+            color: Color(0xFFE2E8F0),
             width: 1.0,
           ),
         ),
@@ -687,36 +667,25 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
         top: false,
         child: SizedBox(
           width: double.infinity,
-          height: 54,
+          height: 52,
           child: ElevatedButton(
-            onPressed: () => _showContributionModal(context, groupName, amount),
+            onPressed: () => _showContributionModal(context, groupTitle, amount),
             style: ElevatedButton.styleFrom(
-              backgroundColor: headerColor,
+              backgroundColor: primaryOrange,
               foregroundColor: Colors.white,
-              elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
+              elevation: 0,
             ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.payments_outlined,
-                  color: Colors.white,
-                  size: 24,
-                ),
-                SizedBox(width: 10),
-                Text(
-                  "Make Contribution",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              ],
+            child: const Text(
+              "Make Contribution",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
+                fontFamily: 'Poppins',
+              ),
             ),
           ),
         ),
@@ -724,4 +693,3 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
     );
   }
 }
-

@@ -260,62 +260,64 @@ class _GroupsPageState extends State<GroupsPage> {
 
   /// Active Groups List
   List<Widget> _buildActiveTab() {
+    final activeGroups = _groups.where((g) => (g["status"] ?? "active") != "completed").toList();
+
+    if (activeGroups.isEmpty) {
+      return [
+        Container(
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: const Center(
+            child: Column(
+              children: [
+                Icon(
+                  Icons.groups_outlined,
+                  size: 48,
+                  color: Color(0xFF94A3B8),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  "No active Equbs yet",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: textDark,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  "Join or create a new savings circle to get started.",
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: textMuted,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ];
+    }
+
     final List<Widget> cardWidgets = [];
-
-    // Group 1: Tech Gadgets Equb
-    cardWidgets.add(
-      _buildGroupCard(
-        title: "Tech Gadgets Equb",
-        membersText: "12 Members",
-        amountText: "ETB 1,000",
-        periodText: " / Mo",
-        cycleText: "Cycle 4/12",
-        payoutText: "Next payout in 5 days",
-        icon: Icons.devices_other_rounded,
-        onDetails: () => _showGroupDetails({
-          "title": "Tech Gadgets Equb",
-          "amount": "1,000",
-          "members": 12,
-          "cycle": "Cycle 4/12",
-          "payout": "Next payout in 5 days",
-        }),
-      ),
-    );
-
-    cardWidgets.add(const SizedBox(height: 18));
-
-    // Group 2: Family Savings
-    cardWidgets.add(
-      _buildGroupCard(
-        title: "Family Savings",
-        membersText: "8 Members",
-        amountText: "ETB 5,000",
-        periodText: " / Mo",
-        cycleText: "Cycle 2/8",
-        payoutText: "Next payout in 14 days",
-        icon: Icons.home_outlined,
-        onDetails: () => _showGroupDetails({
-          "title": "Family Savings",
-          "amount": "5,000",
-          "members": 8,
-          "cycle": "Cycle 2/8",
-          "payout": "Next payout in 14 days",
-        }),
-      ),
-    );
-
-    // Any dynamic groups from API
-    for (final g in _groups) {
-      cardWidgets.add(const SizedBox(height: 18));
+    for (int i = 0; i < activeGroups.length; i++) {
+      final g = activeGroups[i];
+      if (i > 0) cardWidgets.add(const SizedBox(height: 18));
       cardWidgets.add(
         _buildGroupCard(
           title: g["group_name"] ?? "Equb Group",
-          membersText: "${g["max_members"] ?? 10} Members",
-          amountText: "ETB ${g["contribution_amount"] ?? 1000}",
-          periodText: " / Mo",
-          cycleText: "Cycle 1/${g["cycle_duration"] ?? 12}",
-          payoutText: "Next payout in 30 days",
-          icon: Icons.group_work_outlined,
+          membersText: "${g["member_count"] ?? g["max_members"] ?? 1} / ${g["max_members"] ?? 10} Members",
+          amountText: "ETB ${g["contribution_amount"] ?? 0}",
+          periodText: " / Cycle",
+          cycleText: "Cycle ${g["current_cycle"] ?? 1}/${g["total_cycles"] ?? g["cycle_duration"] ?? 12}",
+          payoutText: "Status: ${(g["status"] ?? "Active").toString().toUpperCase()}",
+          icon: Icons.groups_rounded,
           onDetails: () => _showGroupDetails(g),
         ),
       );

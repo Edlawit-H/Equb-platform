@@ -1,37 +1,38 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:equb_app/core/constants/api_constants.dart';
 
 class GroupService {
+  static const _storage = FlutterSecureStorage();
   String get baseUrl => ApiConstants.baseUrl;
-  
-  Future<Map<String, dynamic>> createGroup({
-     required String groupName,
-  required int contribution,
-  required int duration,
-  required int maxMembers,
-  DateTime? startDate,
-  String? description,
 
-  }) async {
-
-      final prefs = await SharedPreferences.getInstance();
-      final token =  prefs.getString("token");
-        
-    
-    final body = {
-    "group_name": groupName,
-    "contribution_amount": contribution,
-    "max_members": maxMembers,
-    "cycle_duration": duration,
-  };
-   if (startDate != null) {
-    body["start_date"] = startDate.toIso8601String().split("T")[0];
+  Future<String?> _getToken() async {
+    return await _storage.read(key: 'access_token');
   }
-  if (description != null && description.isNotEmpty) {
-  body["description"] = description;
-}
+
+  Future<Map<String, dynamic>> createGroup({
+    required String groupName,
+    required int contribution,
+    required int duration,
+    required int maxMembers,
+    DateTime? startDate,
+    String? description,
+  }) async {
+    final token = await _getToken();
+
+    final body = <String, dynamic>{
+      "group_name": groupName,
+      "contribution_amount": contribution,
+      "max_members": maxMembers,
+      "cycle_duration": duration,
+    };
+    if (startDate != null) {
+      body["start_date"] = startDate.toIso8601String().split("T")[0];
+    }
+    if (description != null && description.isNotEmpty) {
+      body["description"] = description;
+    }
 
     final response = await http.post(
       Uri.parse("$baseUrl/groups"),
@@ -42,18 +43,97 @@ class GroupService {
       body: jsonEncode(body),
     );
 
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    }
+    throw Exception(data['message'] ?? 'Failed to create group');
+  }
+
+  Future<Map<String, dynamic>> getGroups() async {
+    final token = await _getToken();
+
+    final response = await http.get(
+      Uri.parse("$baseUrl/groups"),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Cache-Control": "no-cache",
+      },
+    );
     return jsonDecode(response.body);
   }
 
-    Future<Map<String, dynamic>> getGroups()async{
-        final prefs = await SharedPreferences.getInstance();
-        final token =  prefs.getString("token");
+  Future<Map<String, dynamic>> joinGroup(String inviteCodeOrId) async {
+    final token = await _getToken();
 
-        final response = await http.get(
-        Uri.parse("$baseUrl/groups"),
-        headers: {"Authorization": "Bearer $token",
-                  "Cache-Control": "no-cache",}
-        );
-return jsonDecode(response.body);
+    final isUuid = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(inviteCodeOrId);
+    final url = isUuid
+        ? "$baseUrl/groups/$inviteCodeOrId/join"
+        : "$baseUrl/groups/join";
+
+    final body = isUuid ? null : jsonEncode({"invitation_code": inviteCodeOrId.trim()});
+
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+      body: body,
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
     }
+    throw Exception(data['message'] ?? 'Failed to join group');
+  }
+
+  Future<Map<String, dynamic>> getGroupById(String groupId) async {
+    final token = await _getToken();
+
+    final response = await http.get(
+      Uri.parse("$baseUrl/groups/$groupId"),
+      headers: {
+        "Authorization": "Bearer $token",
+      },
+    );
+    return jsonDecode(response.body);
+  }
+
+  Future<Map<String, dynamic>> getGroupMembers(String groupId) async {
+    final token = await _getToken();
+
+    final response = await http.get(
+      Uri.parse("$baseUrl/groups/$groupId/members"),
+      headers: {
+        "Authorization": "Bearer $token",
+      },
+    );
+    return jsonDecode(response.body);
+  }
+
+  Future<Map<String, dynamic>> startGroup(String groupId) async {
+    final token = await _getToken();
+
+    final response = await http.post(
+      Uri.parse("$baseUrl/groups/$groupId/start"),
+      headers: {
+        "Authorization": "Bearer $token",
+      },
+    );
+    return jsonDecode(response.body);
+  }
+
+  Future<Map<String, dynamic>> leaveGroup(String groupId) async {
+    final token = await _getToken();
+
+    final response = await http.post(
+      Uri.parse("$baseUrl/groups/$groupId/leave"),
+      headers: {
+        "Authorization": "Bearer $token",
+      },
+    );
+    return jsonDecode(response.body);
+  }
 }

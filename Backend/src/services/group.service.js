@@ -119,9 +119,8 @@ export async function getGroupById(groupId) {
 
 
 
-export async function joinGroup(groupId, userId) {
-
-    // Check if group exists
+export async function joinGroup(groupIdOrCode, userId) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(groupIdOrCode);
     const { rows } = await pool.query(
         `
         SELECT
@@ -129,17 +128,18 @@ export async function joinGroup(groupId, userId) {
             max_members,
             status
         FROM equb_groups
-        WHERE group_id = $1
+        WHERE (${isUuid ? 'group_id = $1' : 'invitation_code = $1'})
         AND is_deleted = FALSE;
         `,
-        [groupId]
+        [groupIdOrCode]
     );
 
     if (rows.length !== 1) {
-        throw new Error("Group not found");
+        throw new Error("Group not found with code: " + groupIdOrCode);
     }
 
     const group = rows[0];
+    const groupId = group.group_id;
 
     if (group.status === 'active' || group.status === 'completed') {
         throw new Error("Cannot join a group that has already started");
