@@ -1,21 +1,16 @@
-import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:equb_app/core/constants/api_constants.dart';
 
 const _storage = FlutterSecureStorage();
 
 Dio createDioClient() {
-  final defaultBaseUrl = kIsWeb ? 'http://localhost:5000/api/v1' : 'http://10.0.2.2:5000/api/v1';
   final dio = Dio(BaseOptions(
-    baseUrl: const String.fromEnvironment('API_BASE_URL', defaultValue: ''),
+    baseUrl: ApiConstants.baseUrl,
     connectTimeout: const Duration(seconds: 10),
     receiveTimeout: const Duration(seconds: 10),
     headers: {'Content-Type': 'application/json'},
   ));
-
-  if (dio.options.baseUrl.isEmpty) {
-    dio.options.baseUrl = defaultBaseUrl;
-  }
 
   dio.interceptors.add(InterceptorsWrapper(
     onRequest: (options, handler) async {

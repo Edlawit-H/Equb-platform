@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:equb_app/core/constants/api_constants.dart';
 
 class ProfileService {
-  static const String baseUrl =
-      "http://localhost:3000/api/v1"; // Android Emulator
+  static String get baseUrl => ApiConstants.baseUrl;
 
   static Future<Map<String, dynamic>> getProfile() async {
     final prefs = await SharedPreferences.getInstance();

@@ -13,31 +13,13 @@ class ContributionListPage extends StatefulWidget {
 class _ContributionListPageState extends State<ContributionListPage> with SingleTickerProviderStateMixin {
   final _service = ContributionsService();
   late TabController _tabs;
-  Map<String, List<Map<String, dynamic>>> _data = {
-    'upcoming': [
-      {
-        'contribution_id': 'cb-101',
-        'group_name': 'Weekly Savings Equb',
-        'cycle_number': 2,
-        'amount': 1000.0,
-        'due_date': '2026-08-15',
-        'status': 'pending',
-      },
-    ],
-    'history': [
-      {
-        'contribution_id': 'cb-100',
-        'group_name': 'Weekly Savings Equb',
-        'cycle_number': 1,
-        'amount': 1000.0,
-        'due_date': '2026-08-01',
-        'paid_date': '2026-08-01',
-        'status': 'paid',
-      },
-    ],
+  final Map<String, List<Map<String, dynamic>>> _data = {
+    'upcoming': [],
+    'history': [],
     'overdue': [],
   };
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -47,9 +29,16 @@ class _ContributionListPageState extends State<ContributionListPage> with Single
   }
 
   @override
-  void dispose() { _tabs.dispose(); super.dispose(); }
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
 
   Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final results = await Future.wait([
         _service.getPending(),
@@ -58,14 +47,19 @@ class _ContributionListPageState extends State<ContributionListPage> with Single
       ]);
       if (mounted) {
         setState(() {
-          _data['upcoming'] = List<Map<String, dynamic>>.from(results[0]['contributions'] ?? _data['upcoming']!);
-          _data['history'] = List<Map<String, dynamic>>.from(results[1]['contributions'] ?? _data['history']!);
-          _data['overdue'] = List<Map<String, dynamic>>.from(results[2]['contributions'] ?? _data['overdue']!);
+          _data['upcoming'] = List<Map<String, dynamic>>.from(results[0]['contributions'] ?? []);
+          _data['history'] = List<Map<String, dynamic>>.from(results[1]['contributions'] ?? []);
+          _data['overdue'] = List<Map<String, dynamic>>.from(results[2]['contributions'] ?? []);
           _loading = false;
         });
       }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Failed to load contributions';
+        });
+      }
     }
   }
 
@@ -92,9 +86,24 @@ class _ContributionListPageState extends State<ContributionListPage> with Single
         child: TabBarView(
           controller: _tabs,
           children: [
-            _ContributionTab(items: _data['upcoming']!, type: 'upcoming', onRefresh: _load),
-            _ContributionTab(items: _data['history']!, type: 'history', onRefresh: _load),
-            _ContributionTab(items: _data['overdue']!, type: 'overdue', onRefresh: _load),
+            _ContributionTab(
+              items: _data['upcoming']!,
+              type: 'upcoming',
+              error: _error,
+              onRefresh: _load,
+            ),
+            _ContributionTab(
+              items: _data['history']!,
+              type: 'history',
+              error: _error,
+              onRefresh: _load,
+            ),
+            _ContributionTab(
+              items: _data['overdue']!,
+              type: 'overdue',
+              error: _error,
+              onRefresh: _load,
+            ),
           ],
         ),
       ),
@@ -105,21 +114,65 @@ class _ContributionListPageState extends State<ContributionListPage> with Single
 class _ContributionTab extends StatelessWidget {
   final List<Map<String, dynamic>> items;
   final String type;
+  final String? error;
   final Future<void> Function() onRefresh;
-  const _ContributionTab({required this.items, required this.type, required this.onRefresh});
+
+  const _ContributionTab({
+    required this.items,
+    required this.type,
+    this.error,
+    required this.onRefresh,
+  });
 
   @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) {
-      return Center(child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.check_circle_outline_rounded, size: 60, color: AppTheme.grayText.withOpacity(0.4)),
-          const SizedBox(height: 12),
-          Text('No $type contributions', style: const TextStyle(fontFamily: 'Poppins', color: AppTheme.grayText)),
-        ],
-      ));
+    if (error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline_rounded, color: AppTheme.error, size: 36),
+            const SizedBox(height: 10),
+            Text(error!, style: const TextStyle(fontFamily: 'Poppins', color: AppTheme.error, fontSize: 13)),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: onRefresh,
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+              child: const Text('Retry', style: TextStyle(color: Colors.white, fontFamily: 'Poppins')),
+            ),
+          ],
+        ),
+      );
     }
+
+    if (items.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              type == 'upcoming'
+                  ? Icons.event_available_rounded
+                  : type == 'history'
+                      ? Icons.history_rounded
+                      : Icons.alarm_on_rounded,
+              size: 48,
+              color: AppTheme.grayText.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              type == 'upcoming'
+                  ? 'No upcoming contributions'
+                  : type == 'history'
+                      ? 'No contribution history yet'
+                      : 'No overdue contributions 🎉',
+              style: const TextStyle(fontFamily: 'Poppins', color: AppTheme.grayText, fontSize: 14),
+            ),
+          ],
+        ),
+      );
+    }
+
     return RefreshIndicator(
       color: AppTheme.primary,
       onRefresh: onRefresh,
@@ -127,11 +180,7 @@ class _ContributionTab extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         itemCount: items.length,
         separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (context, i) => _ContributionCard(
-          item: items[i],
-          type: type,
-          onTap: () => Navigator.pushNamed(context, '/contributions/${items[i]['contribution_id']}'),
-        ),
+        itemBuilder: (context, i) => _ContributionCard(item: items[i], type: type),
       ),
     );
   }
@@ -140,56 +189,89 @@ class _ContributionTab extends StatelessWidget {
 class _ContributionCard extends StatelessWidget {
   final Map<String, dynamic> item;
   final String type;
-  final VoidCallback onTap;
-  const _ContributionCard({required this.item, required this.type, required this.onTap});
+  const _ContributionCard({required this.item, required this.type});
 
   @override
   Widget build(BuildContext context) {
-    final status = item['status'] ?? 'pending';
-    final Color statusColor = status == 'paid'
+    final isPaid = type == 'history';
+    final isOverdue = type == 'overdue';
+    final Color badgeColor = isPaid
         ? AppTheme.success
-        : status == 'overdue'
+        : isOverdue
             ? AppTheme.error
             : AppTheme.primary;
+    final amount = item['amount'];
+    final formattedAmount = (amount is num ? amount.toDouble() : double.tryParse('$amount') ?? 0.0).toStringAsFixed(0);
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: () => Navigator.pushNamed(context, '/contributions/${item['contribution_id']}'),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
+          ],
         ),
         child: Row(
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
+                color: badgeColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(Icons.payments_rounded, color: statusColor, size: 22),
+              child: Icon(
+                isPaid
+                    ? Icons.check_circle_rounded
+                    : isOverdue
+                        ? Icons.warning_rounded
+                        : Icons.access_time_rounded,
+                color: badgeColor,
+                size: 24,
+              ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item['group_name'] ?? 'Equb Group', style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Poppins', color: AppTheme.darkText, fontSize: 14)),
-                  Text('Cycle ${item['cycle_number'] ?? 1}  •  Due: ${item['due_date'] ?? '—'}', style: const TextStyle(color: AppTheme.grayText, fontSize: 12, fontFamily: 'Poppins')),
+                  Text(
+                    item['group_name'] ?? 'Equb Contribution',
+                    style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.darkText),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Cycle ${item['cycle_number']} • Due ${item['due_date'] ?? '—'}',
+                    style: const TextStyle(fontFamily: 'Poppins', color: AppTheme.grayText, fontSize: 12),
+                  ),
                 ],
               ),
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text('ETB ${item['amount'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: AppTheme.darkText, fontSize: 14)),
+                Text(
+                  'ETB $formattedAmount',
+                  style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.darkText),
+                ),
+                const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                  child: Text(status, style: TextStyle(color: statusColor, fontSize: 10, fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: badgeColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    isPaid
+                        ? 'Paid'
+                        : isOverdue
+                            ? 'Overdue'
+                            : 'Pending',
+                    style: TextStyle(fontFamily: 'Poppins', color: badgeColor, fontSize: 10, fontWeight: FontWeight.w600),
+                  ),
                 ),
               ],
             ),

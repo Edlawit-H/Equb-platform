@@ -1,8 +1,11 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../core/network/dio_client.dart';
+import '../../../core/constants/api_constants.dart';
 
 class ReportsService {
   final Dio _dio = createDioClient();
+  static const _storage = FlutterSecureStorage();
 
   Future<Map<String, dynamic>> getDashboard() async {
     final res = await _dio.get('/reports/dashboard');
@@ -24,12 +27,10 @@ class ReportsService {
     return res.data['data'];
   }
 
-  Future<Map<String, dynamic>> exportPdf() async {
-    final res = await _dio.get('/reports/export/pdf');
-    return res.data['data'];
-  }
-
-  Future<void> exportExcel() async {
-    await _dio.get('/reports/export/excel');
+  /// Returns an authenticated URL the browser can open directly to download the file.
+  /// Token is passed as query param since browser <a> tags can't set Authorization headers.
+  Future<String> getExportUrl(String path) async {
+    final token = await _storage.read(key: 'access_token');
+    return '${ApiConstants.baseUrl}$path?token=${Uri.encodeComponent(token ?? '')}';
   }
 }

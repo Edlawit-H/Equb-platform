@@ -32,6 +32,7 @@ import {
 import { sanitizeUser } from "../utils/sanitizeUser.js";
 import { generateToken } from "../utils/token.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt.js";
+import { AppError } from "../utils/AppError.js";
 
 
 
@@ -197,27 +198,23 @@ export const loginUser = async (data) => {
 
 
   if (!user) {
-
-    throw new Error(
-      "Invalid phone number or password"
-    );
-
+    throw new AppError("Invalid phone number or password", 401);
   }
 
-
-  const passwordMatch =
-    await bcrypt.compare(
-      data.password,
-      user.password_hash
+  if (!user.password_hash?.startsWith('$2')) {
+    throw new AppError(
+      "Account password is not set up correctly. Reset the password or re-register.",
+      500,
     );
+  }
 
+  const passwordMatch = await bcrypt.compare(
+    data.password,
+    user.password_hash,
+  );
 
   if (!passwordMatch) {
-
-    throw new Error(
-      "Invalid phone number or password"
-    );
-
+    throw new AppError("Invalid phone number or password", 401);
   }
 
 const safeUser = sanitizeUser(user);
