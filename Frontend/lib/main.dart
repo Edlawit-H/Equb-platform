@@ -7,6 +7,7 @@ import 'features/auth/presentation/pages/register_page.dart';
 import 'features/auth/presentation/pages/otp_verification_page.dart';
 import 'features/auth/presentation/pages/forgot_password_page.dart';
 import 'features/auth/presentation/pages/reset_password_page.dart';
+import 'features/dashboard/presentation/home_screen.dart';
 void main() {
   runApp(const ProviderScope(child: EqubApp()));
 }
@@ -26,10 +27,7 @@ class EqubApp extends StatelessWidget {
         '/otp': (context) => const OtpScreen(),
         '/forgot-password': (context) => const ForgotPasswordScreen(),
         '/reset-password': (context) => const ResetPasswordScreen(),
-        //'/home': (context) => HomeScreen(),
-        //'/groups': (context) => GroupsPage(),
-        //'/create': (context) => CreateGroupScreen(),
-        //'/profile': (context) => ProfileScreen(),
+        '/home': (context) => const HomeScreen(),
       },
       onGenerateRoute: onGenerateAppRoute,
       debugShowCheckedModeBanner: false,

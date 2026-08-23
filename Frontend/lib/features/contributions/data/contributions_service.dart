@@ -18,6 +18,18 @@ class ContributionsService {
     return res.data['data'];
   }
 
+  Future<List<Map<String, dynamic>>> getPendingContributions() async {
+    try {
+      final res = await getPending();
+      if (res['contributions'] != null && res['contributions'] is List) {
+        return List<Map<String, dynamic>>.from(res['contributions']);
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
   Future<Map<String, dynamic>> getOverdue() async {
     final res = await _dio.get('/contributions/overdue');
     return res.data['data'];
@@ -39,5 +51,15 @@ class ContributionsService {
       'cycle_number': cycleNumber,
     });
     return res.data['data'];
+  }
+
+  Future<Map<String, dynamic>> payContribution({
+    required String groupId,
+    required int cycleNumber,
+    String? paymentMethod,
+    String? contributionId,
+    double? amount,
+  }) async {
+    return await pay(groupId, cycleNumber);
   }
 }

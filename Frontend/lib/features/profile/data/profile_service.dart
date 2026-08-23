@@ -1,21 +1,21 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:equb_app/core/constants/api_constants.dart';
 
 class ProfileService {
+  static const _storage = FlutterSecureStorage();
   static String get baseUrl => ApiConstants.baseUrl;
 
-  static Future<Map<String, dynamic>> getProfile() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("token");
+  static Future<String?> _getToken() async {
+    return await _storage.read(key: 'access_token');
+  }
 
-    if (token == null) {
-      throw Exception("No token found");
-    }
+  static Future<Map<String, dynamic>> getProfile() async {
+    final token = await _getToken();
 
     final response = await http.get(
-      Uri.parse("$baseUrl/auth/profile"),
+      Uri.parse("$baseUrl/users/me"),
       headers: {
         "Authorization": "Bearer $token",
         "Content-Type": "application/json",
@@ -30,24 +30,23 @@ class ProfileService {
   }
 
   static Future<Map<String, dynamic>> updateProfile({
-  required String fullName,
-  required String email,
-}) async {
-  final prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString("token");
+    required String fullName,
+    required String email,
+  }) async {
+    final token = await _getToken();
 
-  final response = await http.put(
-    Uri.parse("$baseUrl/auth/profile"),
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer $token",
-    },
-    body: jsonEncode({
-      "full_name": fullName,
-      "email": email,
-    }),
-  );
+    final response = await http.patch(
+      Uri.parse("$baseUrl/users/me"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+      body: jsonEncode({
+        "full_name": fullName,
+        "email": email,
+      }),
+    );
 
-  return jsonDecode(response.body);
-}
+    return jsonDecode(response.body);
+  }
 }

@@ -9,6 +9,7 @@ const router = Router();
 
 router.use(protect);
 router.post("/",protect,groupController.createGroup);
+router.post("/join",protect,groupController.joinGroupByCode);
 router.get("/",protect,userController.getUserGroups);
 router.get("/:groupId",protect,groupController.getGroupById);
 router.post("/:groupId/join",protect,groupController.joinGroup);

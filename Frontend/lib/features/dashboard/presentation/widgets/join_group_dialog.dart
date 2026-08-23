@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../groups/data/group_service.dart';
 
 class JoinGroupDialog extends StatefulWidget {
   const JoinGroupDialog({super.key});
@@ -9,6 +10,7 @@ class JoinGroupDialog extends StatefulWidget {
 
 class _JoinGroupDialogState extends State<JoinGroupDialog> {
   final TextEditingController _codeController = TextEditingController();
+  final _groupService = GroupService();
   bool _isLoading = false;
 
   @override
@@ -31,19 +33,28 @@ class _JoinGroupDialogState extends State<JoinGroupDialog> {
 
     setState(() => _isLoading = true);
 
-    // Simulate joining group or API integration
-    await Future.delayed(const Duration(milliseconds: 600));
+    try {
+      final res = await _groupService.joinGroup(code);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      Navigator.pop(context, true);
 
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-    Navigator.pop(context, true);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Joined Equb with code '$code'"),
-        backgroundColor: const Color(0xFFFF5C00),
-      ),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(res["message"] ?? "Joined Equb group successfully!"),
+          backgroundColor: const Color(0xFF16A34A),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll("Exception: ", "")),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   @override
@@ -80,24 +91,27 @@ class _JoinGroupDialogState extends State<JoinGroupDialog> {
               fontSize: 20,
               fontWeight: FontWeight.w700,
               color: Color(0xFF0F172A),
+              fontFamily: 'Poppins',
             ),
           ),
           const SizedBox(height: 8),
           const Text(
-            "Enter the 6-character invitation code provided by your group organizer.",
+            "Enter the 8-character invitation code provided by your group organizer.",
             style: TextStyle(
               fontSize: 14,
               color: Color(0xFF64748B),
               height: 1.4,
+              fontFamily: 'Poppins',
             ),
           ),
           const SizedBox(height: 20),
           TextField(
             controller: _codeController,
             textCapitalization: TextCapitalization.characters,
+            style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, letterSpacing: 1.2),
             decoration: InputDecoration(
-              hintText: "e.g. EQB-9842",
-              prefixIcon: const Icon(Icons.vpn_key_rounded, color: Color(0xFFFF5C00)),
+              hintText: "e.g. A1B2C3D4",
+              prefixIcon: const Icon(Icons.vpn_key_rounded, color: Color(0xFFF97316)),
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -111,7 +125,7 @@ class _JoinGroupDialogState extends State<JoinGroupDialog> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFFFF5C00), width: 1.5),
+                borderSide: const BorderSide(color: Color(0xFFF97316), width: 1.5),
               ),
             ),
           ),
@@ -122,7 +136,7 @@ class _JoinGroupDialogState extends State<JoinGroupDialog> {
             child: ElevatedButton(
               onPressed: _isLoading ? null : _joinWithCode,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF5C00),
+                backgroundColor: const Color(0xFFF97316),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -143,6 +157,7 @@ class _JoinGroupDialogState extends State<JoinGroupDialog> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
+                        fontFamily: 'Poppins',
                       ),
                     ),
             ),

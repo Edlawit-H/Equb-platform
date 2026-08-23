@@ -92,6 +92,26 @@ export async function joinGroup(req, res, next) {
         next(err);
     }
 }
+export async function joinGroupByCode(req, res, next) {
+    try {
+        const code = req.body.invitation_code || req.body.invite_code || req.body.code;
+        if (!code) {
+            return res.status(400).json({ status: 'error', message: 'Invitation code is required' });
+        }
+        const member = await groupService.joinGroup(
+            code.trim(),
+            req.user.userId
+        );
+
+        res.status(201).json({
+            status: 'success',
+            message: "Joined group successfully",
+            data: member,
+        });
+    } catch (err) {
+        next(err);
+    }
+}
 export async function leaveGroup(req, res, next) {
     try {
 
