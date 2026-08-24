@@ -14,7 +14,6 @@ export async function createGroup(data, userId) {
     cycle_duration,
     max_members,
     start_date,
-    contribution_deadline_days = 1,
 } = data;
     try {
         await client.query("BEGIN");
@@ -36,7 +35,7 @@ export async function createGroup(data, userId) {
                 max_members,
                 start_date,
                 end_date,
-                contribution_deadline_days
+                cycle_end_date
             )
             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
             RETURNING *;
@@ -51,7 +50,8 @@ export async function createGroup(data, userId) {
                 max_members,
                 startDate.toISOString().split('T')[0],
                 endDate.toISOString().split('T')[0],
-                contribution_deadline_days,
+                new Date(startDate.getTime() + cycle_duration * 86400000)
+                    .toISOString().split('T')[0],
             ]
         );
 
@@ -456,11 +456,9 @@ export async function startGroup(groupId, userId) {
     const endDate = new Date(startDate);
         endDate.setDate(endDate.getDate() + group.max_members * group.cycle_duration);
 
-    const dueDate = new Date(startDate);
-    dueDate.setDate(dueDate.getDate() + (group.contribution_deadline_days ?? 1));
-
     const cycleEndDate = new Date(startDate);
     cycleEndDate.setDate(cycleEndDate.getDate() + group.cycle_duration);
+    const dueDate = new Date(cycleEndDate);
 
     await client.query(
     `UPDATE equb_groups
