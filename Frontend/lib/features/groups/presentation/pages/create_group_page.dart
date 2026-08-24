@@ -17,6 +17,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   final descriptionController = TextEditingController();
 
   String _selectedFrequency = "Monthly";
+  DateTime _startDate = DateTime.now();
   int _maxMembers = 12;
   bool _isLoading = false;
 
@@ -112,7 +113,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         contribution: amount,
         duration: _getCycleDuration(),
         maxMembers: _maxMembers,
-        startDate: DateTime.now(),
+        startDate: _startDate,
         description: descriptionController.text.trim().isEmpty
             ? null
             : descriptionController.text.trim(),
@@ -397,6 +398,41 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                                 ),
                               );
                             }).toList(),
+                          ),
+
+                          const SizedBox(height: 12),
+                          _buildFieldLabel("Start Date"),
+                          const SizedBox(height: 8),
+                          InkWell(
+                            onTap: () async {
+                              final selected = await showDatePicker(
+                                context: context,
+                                initialDate: _startDate,
+                                firstDate: DateTime.now(),
+                                lastDate: DateTime.now()
+                                    .add(const Duration(days: 3650)),
+                              );
+                              if (selected != null) {
+                                setState(() => _startDate = selected);
+                              }
+                            },
+                            child: InputDecorator(
+                              decoration: InputDecoration(
+                                prefixIcon: const Icon(
+                                    Icons.calendar_today_rounded,
+                                    color: primaryOrange),
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide:
+                                        const BorderSide(color: borderColor)),
+                              ),
+                              child: Text(
+                                "${_startDate.day}/${_startDate.month}/${_startDate.year}",
+                                style: const TextStyle(
+                                    color: textDark,
+                                    fontWeight: FontWeight.w600),
+                              ),
+                            ),
                           ),
 
                           const SizedBox(height: 12),

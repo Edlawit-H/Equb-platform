@@ -13,13 +13,16 @@ export async function createGroup(data, userId) {
     contribution_amount,
     cycle_duration,
     max_members,
-    selection_mode = 'positional',
+    start_date,
     contribution_deadline_days = 1,
 } = data;
     try {
         await client.query("BEGIN");
 
         const invitation_code = generateInvitationCode();
+        const startDate = start_date ? new Date(start_date) : new Date();
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + max_members * cycle_duration);
 
         const { rows } = await client.query(
             `
@@ -31,10 +34,11 @@ export async function createGroup(data, userId) {
                 contribution_amount,
                 cycle_duration,
                 max_members,
-                selection_mode,
+                start_date,
+                end_date,
                 contribution_deadline_days
             )
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
             RETURNING *;
             `,
             [
@@ -45,7 +49,8 @@ export async function createGroup(data, userId) {
                 contribution_amount,
                 cycle_duration,
                 max_members,
-                selection_mode,
+                startDate.toISOString().split('T')[0],
+                endDate.toISOString().split('T')[0],
                 contribution_deadline_days,
             ]
         );
@@ -141,8 +146,17 @@ export async function joinGroup(groupIdOrCode, userId) {
     const group = rows[0];
     const groupId = group.group_id;
 
-    if (group.status === 'active' || group.status === 'completed') {
+    if (group.status === 'active' || group.status === 'completed' ||
+        (group.start_date && new Date(group.start_date) <= new Date())) {
         throw new Error("Cannot join a group that has already started");
+    }
+
+    const { rows: payoutRows } = await pool.query(
+        `SELECT 1 FROM payouts WHERE group_id = $1 LIMIT 1`,
+        [groupId]
+    );
+    if (payoutRows.length > 0) {
+        throw new Error("Cannot join a group after a payout has been issued");
     }
 
     if (await isMember(userId, groupId)) {
@@ -435,9 +449,12 @@ export async function startGroup(groupId, userId) {
       throw new Error('At least 2 members are required to start a group');
     }
 
-    const startDate = new Date();
+        const startDate = new Date(group.start_date || new Date());
+        if (startDate > new Date()) {
+            throw new Error(`This group is scheduled to start on ${startDate.toISOString().split('T')[0]}`);
+        }
     const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + actualMemberCount * group.cycle_duration);
+        endDate.setDate(endDate.getDate() + group.max_members * group.cycle_duration);
 
     const dueDate = new Date(startDate);
     dueDate.setDate(dueDate.getDate() + (group.contribution_deadline_days ?? 1));
@@ -446,8 +463,8 @@ export async function startGroup(groupId, userId) {
     cycleEndDate.setDate(cycleEndDate.getDate() + group.cycle_duration);
 
     await client.query(
-      `UPDATE equb_groups
-       SET status = 'active', start_date = $1, end_date = $2, cycle_end_date = $3, total_cycles = $4
+    `UPDATE equb_groups
+     SET status = 'active', start_date = $1, end_date = $2, cycle_end_date = $3, total_cycles = $4
        WHERE group_id = $5`,
       [
         startDate.toISOString().split('T')[0],

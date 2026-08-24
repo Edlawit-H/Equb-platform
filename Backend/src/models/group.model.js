@@ -6,10 +6,9 @@
  * @property {string} admin_id
  * @property {string} invitation_code
  * @property {number} contribution_amount
- * @property {7|14|30} cycle_duration
+ * @property {1|7|14|30} cycle_duration
  * @property {number} max_members
  * @property {number} current_cycle
- * @property {'positional'|'random'} selection_mode
  * @property {Date|null} start_date
  * @property {Date|null} end_date
  * @property {'pending'|'ready'|'active'|'completed'|'cancelled'} status

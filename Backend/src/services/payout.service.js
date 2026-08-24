@@ -7,7 +7,7 @@ export const checkCycleComplete = async (groupId, cycleNumber) => {
     await client.query('BEGIN');
 
     const { rows: groupRows } = await client.query(
-      `SELECT contribution_amount, max_members, total_cycles, current_cycle, cycle_duration, selection_mode
+      `SELECT contribution_amount, max_members, total_cycles, current_cycle, cycle_duration
        FROM equb_groups WHERE group_id = $1 AND status = 'active'`,
       [groupId]
     );
@@ -50,35 +50,22 @@ export const checkCycleComplete = async (groupId, cycleNumber) => {
     const activeCount = Number(memberRows[0].count);
     const payoutAmount = group.contribution_amount * activeCount;
 
-    let winnerRows;
-
-    if (group.selection_mode === 'random') {
-      // Pick from members who haven't received a payout yet in this group
-      const result = await client.query(
-        `SELECT gm.member_id, gm.user_id
-         FROM group_members gm
-         WHERE gm.group_id = $1 AND gm.status = 'active'
-           AND NOT EXISTS (
-             SELECT 1 FROM payouts p
-             WHERE p.member_id = gm.member_id
-               AND p.group_id = $1
-               AND p.status = 'completed'
-           )
-         ORDER BY RANDOM()
-         LIMIT 1`,
-        [groupId]
-      );
-      winnerRows = result.rows;
-    } else {
-      // Positional: winner is the member whose position_in_cycle = current cycle number
-      const result = await client.query(
-        `SELECT gm.member_id, gm.user_id
-         FROM group_members gm
-         WHERE gm.group_id = $1 AND gm.position_in_cycle = $2 AND gm.status = 'active'`,
-        [groupId, cycleNumber]
-      );
-      winnerRows = result.rows;
-    }
+    const { rows: winnerRows } = await client.query(
+      `SELECT gm.member_id, gm.user_id
+       FROM group_members gm
+       WHERE gm.group_id = $1
+         AND gm.status = 'active'
+         AND NOT EXISTS (
+           SELECT 1
+           FROM payouts p
+           WHERE p.group_id = gm.group_id
+             AND p.member_id = gm.member_id
+             AND p.status = 'completed'
+         )
+       ORDER BY RANDOM()
+       LIMIT 1`,
+      [groupId]
+    );
 
     if (winnerRows.length === 0) {
       await client.query('ROLLBACK');

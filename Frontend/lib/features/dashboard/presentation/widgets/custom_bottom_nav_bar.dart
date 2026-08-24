@@ -59,7 +59,7 @@ class CustomBottomNavBar extends StatelessWidget {
               index: 3,
               icon: Icons.account_balance_wallet_outlined,
               activeIcon: Icons.account_balance_wallet_rounded,
-              label: 'Loans',
+              label: 'Wallet',
             ),
             _buildNavItem(
               index: 4,
