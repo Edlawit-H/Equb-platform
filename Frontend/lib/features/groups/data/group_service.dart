@@ -102,20 +102,6 @@ class GroupService {
     }
   }
 
-  Future<Map<String, dynamic>> getGroupActivity(String groupId) async {
-    final token = await _getToken();
-
-    final response = await http.get(
-      Uri.parse("$baseUrl/groups/$groupId/activity"),
-      headers: {"Authorization": "Bearer $token"},
-    );
-    final data = jsonDecode(response.body);
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return data;
-    }
-    throw Exception(data['message'] ?? 'Failed to load group activity');
-  }
-
   Future<Map<String, dynamic>> startGroup(String groupId) async {
     try {
       final response = await _dio.post('/groups/$groupId/start');
