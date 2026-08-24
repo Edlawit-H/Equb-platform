@@ -31,22 +31,28 @@ import {
 
 import { sanitizeUser } from "../utils/sanitizeUser.js";
 import { generateToken } from "../utils/token.js";
-import { generateAccessToken, generateRefreshToken } from "../utils/jwt.js";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyRefreshToken
+} from "../utils/jwt.js";
 import { AppError } from "../utils/AppError.js";
 
 
 
-export const registerUser = async(data)=>{
-
+export const registerUser = async (data) => {
+  if (!data?.phone_number) {
+    throw new AppError("Phone number is required", 400);
+  }
 
   const existing =
     await findUserByPhone(
       data.phone_number);
 
 
-      if(existing){
-    throw new Error(
-      "User already exists");}
+  if (existing) {
+    throw new AppError("User already exists", 409);
+  }
 
 
   const otp = generateOTP();
@@ -60,10 +66,10 @@ export const registerUser = async(data)=>{
 
   await createOTP({
 
-    phone_number:data.phone_number,
-    otp_code:otp,
-    purpose:"registration",
-    expires_at:expiresAt
+    phone_number: data.phone_number,
+    otp_code: otp,
+    purpose: "registration",
+    expires_at: expiresAt
 
   });
 
@@ -75,7 +81,7 @@ export const registerUser = async(data)=>{
   );
 
   return {
-    message:"OTP generated"
+    message: "OTP generated"
   };
 
 };
@@ -84,37 +90,39 @@ export const registerUser = async(data)=>{
 
 
 export const verifyRegistrationOTP =
-async(data)=>{
+  async (data) => {
+    if (!data?.phone_number || !data?.otp_code || !data?.password || !data?.full_name) {
+      throw new AppError("All fields are required", 400);
+    }
+
+    const client =
+      await pool.connect();
+    try {
+
+      await client.query("BEGIN");
 
 
-const client =
-await pool.connect();
-try{
-
-await client.query("BEGIN");
-
-
-const otpRecord =
-await findValidOTP(
-  data.phone_number,
-  data.otp_code
-);
-
-
-
-if(!otpRecord){
- throw new Error(
-   "Invalid or expired OTP");}
-
-
-const hashedPassword =
-await bcrypt.hash(data.password,10);
+      const otpRecord =
+        await findValidOTP(
+          data.phone_number,
+          data.otp_code
+        );
 
 
 
-const userResult =
-await client.query(
-`
+      if (!otpRecord) {
+        throw new AppError("Invalid or expired OTP", 400);
+      }
+
+
+      const hashedPassword =
+        await bcrypt.hash(data.password, 10);
+
+
+
+      const userResult =
+        await client.query(
+          `
 INSERT INTO users
 (
  phone_number,
@@ -124,72 +132,75 @@ INSERT INTO users
 VALUES($1,$2,$3)
 RETURNING *
 `,
-[
- data.phone_number,
- hashedPassword,
- data.full_name
-]
-);
+          [
+            data.phone_number,
+            hashedPassword,
+            data.full_name
+          ]
+        );
 
 
-const user =
-userResult.rows[0];
+      const user =
+        userResult.rows[0];
 
 
 
-await client.query(
-`
+      await client.query(
+        `
 UPDATE otp_codes
 SET user_id=$1,
     verified=true
 WHERE otp_id=$2
 `,
-[
- user.user_id,
- otpRecord.otp_id
-]
-);
+        [
+          user.user_id,
+          otpRecord.otp_id
+        ]
+      );
 
 
 
-await client.query("COMMIT");
+      await client.query("COMMIT");
 
 
-const safeUser = sanitizeUser(user);
+      const safeUser = sanitizeUser(user);
 
-const token = generateToken(user);
-const payload = {
-  userId: user.user_id,
-  role: user.role,
-};
-const accessToken = generateAccessToken(payload);
-const refreshToken = generateRefreshToken(payload);
+      const token = generateToken(user);
+      const payload = {
+        userId: user.user_id,
+        role: user.role,
+      };
+      const accessToken = generateAccessToken(payload);
+      const refreshToken = generateRefreshToken(payload);
 
-return {
-    user: safeUser,
-    accessToken,
-    refreshToken,
-};
-
-
-}catch(error){
-
-await client.query(
-"ROLLBACK"
-);
-
-throw error;
-
-}finally{
+      return {
+        user: safeUser,
+        accessToken,
+        refreshToken,
+      };
 
 
-client.release();
+    } catch (error) {
 
-}
-};
+      await client.query(
+        "ROLLBACK"
+      );
+
+      throw error;
+
+    } finally {
+
+
+      client.release();
+
+    }
+  };
 
 
 export const loginUser = async (data) => {
+  if (!data?.phone_number || !data?.password) {
+    throw new AppError("Phone number and password are required", 400);
+  }
 
   const user =
     await findUserByPhoneForLogin(
@@ -217,20 +228,20 @@ export const loginUser = async (data) => {
     throw new AppError("Invalid phone number or password", 401);
   }
 
-const safeUser = sanitizeUser(user);
-const payload = {
-  userId: user.user_id,
-  role: user.role,
-};
-const token = generateToken(user);
-const accessToken = generateAccessToken(payload);
-const refreshToken = generateRefreshToken(payload);
+  const safeUser = sanitizeUser(user);
+  const payload = {
+    userId: user.user_id,
+    role: user.role,
+  };
+  const token = generateToken(user);
+  const accessToken = generateAccessToken(payload);
+  const refreshToken = generateRefreshToken(payload);
 
-return {
+  return {
     user: safeUser,
     accessToken,
     refreshToken,
-};
+  };
 
 };
 
@@ -328,145 +339,136 @@ export const requestPasswordReset = async (phone_number) => {
 
 
   return {
-    message:"OTP sent"
+    message: "OTP sent"
   };
 
 };
 
 
 
-export const resetPassword = async(data)=>{
+export const resetPassword = async (data) => {
 
 
-const client = await pool.connect();
+  const client = await pool.connect();
 
 
-try{
+  try {
 
 
-await client.query("BEGIN");
-
-
-
-// 1. Check OTP
-
-const otpRecord =
-await findValidResetOTP(
-  data.phone_number,
-  data.otp_code
-);
+    await client.query("BEGIN");
 
 
 
-if(!otpRecord){
+    // 1. Check OTP
 
-throw new Error(
-  "Invalid or expired OTP"
-);
-
-}
-
-
-
-// 2. Hash new password
-
-const hashedPassword =
-await bcrypt.hash(
-  data.new_password,
-  10
-);
+    const otpRecord =
+      await findValidResetOTP(
+        data.phone_number,
+        data.otp_code
+      );
 
 
 
-// 3. Update password
+    if (!otpRecord) {
 
-const user =
-await updatePassword(
-  data.phone_number,
-  hashedPassword
-);
+      throw new Error(
+        "Invalid or expired OTP"
+      );
+
+    }
 
 
 
-// 4. Mark OTP used
+    // 2. Hash new password
 
-await client.query(
-`
+    const hashedPassword =
+      await bcrypt.hash(
+        data.new_password,
+        10
+      );
+
+
+
+    // 3. Update password
+
+    const user =
+      await updatePassword(
+        data.phone_number,
+        hashedPassword
+      );
+
+
+
+    // 4. Mark OTP used
+
+    await client.query(
+      `
 UPDATE otp_codes
 SET verified = TRUE
 WHERE otp_id = $1
 `,
-[
- otpRecord.otp_id
-]
-);
+      [
+        otpRecord.otp_id
+      ]
+    );
 
 
 
-await client.query(
-"COMMIT"
-);
+    await client.query(
+      "COMMIT"
+    );
 
 
 
-return {
- message:"Password updated successfully"
-};
+    return {
+      message: "Password updated successfully"
+    };
 
 
 
-}catch(error){
+  } catch (error) {
 
 
-await client.query(
-"ROLLBACK"
-);
+    await client.query(
+      "ROLLBACK"
+    );
 
 
-throw error;
+    throw error;
 
 
-}finally{
+  } finally {
 
 
-client.release();
+    client.release();
 
 
-}
+  }
 
 
 };
 
 export const refreshAccessToken = async (refreshToken) => {
-
   if (!refreshToken) {
-    throw new Error("Refresh token required");
+    throw new AppError("Refresh token required", 400);
   }
 
   try {
-
-    const decoded = jwt.verify(
-      refreshToken,
-      process.env.REFRESH_TOKEN_SECRET
-    );
+    const decoded = verifyRefreshToken(refreshToken);
 
     const payload = {
       userId: decoded.userId,
       role: decoded.role,
     };
 
-    const accessToken =
-      generateAccessToken(payload);
+    const accessToken = generateAccessToken(payload);
+    const newRefreshToken = generateRefreshToken(payload);
 
     return {
       accessToken,
+      refreshToken: newRefreshToken,
     };
-
   } catch (error) {
-
-    throw new Error(
-      "Invalid or expired refresh token"
-    );
-
+    throw new AppError("Invalid or expired refresh token", 401);
   }
 };

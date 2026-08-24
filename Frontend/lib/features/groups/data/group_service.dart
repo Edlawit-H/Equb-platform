@@ -1,15 +1,10 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:equb_app/core/constants/api_constants.dart';
+import 'package:dio/dio.dart';
+import 'package:equb_app/core/network/dio_client.dart';
 
 class GroupService {
-  static const _storage = FlutterSecureStorage();
-  String get baseUrl => ApiConstants.baseUrl;
+  final Dio _dio;
 
-  Future<String?> _getToken() async {
-    return await _storage.read(key: 'access_token');
-  }
+  GroupService({Dio? dio}) : _dio = dio ?? createDioClient();
 
   Future<Map<String, dynamic>> createGroup({
     required String groupName,
@@ -19,121 +14,145 @@ class GroupService {
     DateTime? startDate,
     String? description,
   }) async {
-    final token = await _getToken();
+    try {
+      final body = <String, dynamic>{
+        "group_name": groupName,
+        "contribution_amount": contribution,
+        "max_members": maxMembers,
+        "cycle_duration": duration,
+      };
+      if (startDate != null) {
+        body["start_date"] = startDate.toIso8601String().split("T")[0];
+      }
+      if (description != null && description.isNotEmpty) {
+        body["description"] = description;
+      }
 
-    final body = <String, dynamic>{
-      "group_name": groupName,
-      "contribution_amount": contribution,
-      "max_members": maxMembers,
-      "cycle_duration": duration,
-    };
-    if (startDate != null) {
-      body["start_date"] = startDate.toIso8601String().split("T")[0];
+      final response = await _dio.post('/groups', data: body);
+      if (response.data is Map<String, dynamic>) {
+        return response.data as Map<String, dynamic>;
+      }
+      return Map<String, dynamic>.from(response.data);
+    } on DioException catch (e) {
+      final msg = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(msg ?? e.message ?? 'Failed to create group');
     }
-    if (description != null && description.isNotEmpty) {
-      body["description"] = description;
-    }
-
-    final response = await http.post(
-      Uri.parse("$baseUrl/groups"),
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token",
-      },
-      body: jsonEncode(body),
-    );
-
-    final data = jsonDecode(response.body);
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return data;
-    }
-    throw Exception(data['message'] ?? 'Failed to create group');
   }
 
   Future<Map<String, dynamic>> getGroups() async {
-    final token = await _getToken();
-
-    final response = await http.get(
-      Uri.parse("$baseUrl/groups"),
-      headers: {
-        "Authorization": "Bearer $token",
-        "Cache-Control": "no-cache",
-      },
-    );
-    return jsonDecode(response.body);
+    try {
+      final response = await _dio.get(
+        '/groups',
+        options: Options(headers: {'Cache-Control': 'no-cache'}),
+      );
+      if (response.data is Map<String, dynamic>) {
+        return response.data as Map<String, dynamic>;
+      }
+      return Map<String, dynamic>.from(response.data);
+    } on DioException catch (e) {
+      final msg = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(msg ?? e.message ?? 'Failed to fetch groups');
+    }
   }
 
   Future<Map<String, dynamic>> joinGroup(String inviteCodeOrId) async {
-    final token = await _getToken();
+    try {
+      final isUuid = RegExp(
+        r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+      ).hasMatch(inviteCodeOrId);
 
-    final isUuid = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(inviteCodeOrId);
-    final url = isUuid
-        ? "$baseUrl/groups/$inviteCodeOrId/join"
-        : "$baseUrl/groups/join";
+      final path = isUuid
+          ? '/groups/$inviteCodeOrId/join'
+          : '/groups/join';
 
-    final body = isUuid ? null : jsonEncode({"invitation_code": inviteCodeOrId.trim()});
+      final data = isUuid ? null : {"invitation_code": inviteCodeOrId.trim()};
 
-    final response = await http.post(
-      Uri.parse(url),
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token",
-      },
-      body: body,
-    );
-
-    final data = jsonDecode(response.body);
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return data;
+      final response = await _dio.post(path, data: data);
+      if (response.data is Map<String, dynamic>) {
+        return response.data as Map<String, dynamic>;
+      }
+      return Map<String, dynamic>.from(response.data);
+    } on DioException catch (e) {
+      final msg = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(msg ?? e.message ?? 'Failed to join group');
     }
-    throw Exception(data['message'] ?? 'Failed to join group');
   }
 
   Future<Map<String, dynamic>> getGroupById(String groupId) async {
-    final token = await _getToken();
-
-    final response = await http.get(
-      Uri.parse("$baseUrl/groups/$groupId"),
-      headers: {
-        "Authorization": "Bearer $token",
-      },
-    );
-    return jsonDecode(response.body);
+    try {
+      final response = await _dio.get('/groups/$groupId');
+      if (response.data is Map<String, dynamic>) {
+        return response.data as Map<String, dynamic>;
+      }
+      return Map<String, dynamic>.from(response.data);
+    } on DioException catch (e) {
+      final msg = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(msg ?? e.message ?? 'Failed to get group');
+    }
   }
 
   Future<Map<String, dynamic>> getGroupMembers(String groupId) async {
-    final token = await _getToken();
-
-    final response = await http.get(
-      Uri.parse("$baseUrl/groups/$groupId/members"),
-      headers: {
-        "Authorization": "Bearer $token",
-      },
-    );
-    return jsonDecode(response.body);
+    try {
+      final response = await _dio.get('/groups/$groupId/members');
+      if (response.data is Map<String, dynamic>) {
+        return response.data as Map<String, dynamic>;
+      }
+      return Map<String, dynamic>.from(response.data);
+    } on DioException catch (e) {
+      final msg = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(msg ?? e.message ?? 'Failed to get group members');
+    }
   }
 
   Future<Map<String, dynamic>> startGroup(String groupId) async {
-    final token = await _getToken();
-
-    final response = await http.post(
-      Uri.parse("$baseUrl/groups/$groupId/start"),
-      headers: {
-        "Authorization": "Bearer $token",
-      },
-    );
-    return jsonDecode(response.body);
+    try {
+      final response = await _dio.post('/groups/$groupId/start');
+      if (response.data is Map<String, dynamic>) {
+        return response.data as Map<String, dynamic>;
+      }
+      return Map<String, dynamic>.from(response.data);
+    } on DioException catch (e) {
+      final msg = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(msg ?? e.message ?? 'Failed to start group');
+    }
   }
 
   Future<Map<String, dynamic>> leaveGroup(String groupId) async {
-    final token = await _getToken();
+    try {
+      final response = await _dio.post('/groups/$groupId/leave');
+      if (response.data is Map<String, dynamic>) {
+        return response.data as Map<String, dynamic>;
+      }
+      return Map<String, dynamic>.from(response.data);
+    } on DioException catch (e) {
+      final msg = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(msg ?? e.message ?? 'Failed to leave group');
+    }
+  }
 
-    final response = await http.post(
-      Uri.parse("$baseUrl/groups/$groupId/leave"),
-      headers: {
-        "Authorization": "Bearer $token",
-      },
-    );
-    return jsonDecode(response.body);
+  Future<Map<String, dynamic>> updateGroup(String groupId, Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.patch('/groups/$groupId', data: data);
+      if (response.data is Map<String, dynamic>) {
+        return response.data as Map<String, dynamic>;
+      }
+      return Map<String, dynamic>.from(response.data);
+    } on DioException catch (e) {
+      final msg = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(msg ?? e.message ?? 'Failed to update group');
+    }
+  }
+
+  Future<Map<String, dynamic>> deleteGroup(String groupId) async {
+    try {
+      final response = await _dio.delete('/groups/$groupId');
+      if (response.data is Map<String, dynamic>) {
+        return response.data as Map<String, dynamic>;
+      }
+      return Map<String, dynamic>.from(response.data);
+    } on DioException catch (e) {
+      final msg = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(msg ?? e.message ?? 'Failed to delete group');
+    }
   }
 }
