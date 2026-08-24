@@ -33,15 +33,27 @@ class _GroupsPageState extends State<GroupsPage> {
     setState(() => _isLoading = true);
 
     try {
-      final groupRes = await GroupService().getGroups().catchError((_) => <String, dynamic>{});
+      final groupRes = await GroupService()
+          .getGroups()
+          .catchError((_) => <String, dynamic>{});
+
+      final groups = groupRes["data"] is List
+          ? List<Map<String, dynamic>>.from(groupRes["data"])
+          : <Map<String, dynamic>>[];
+      final memberResponses = await Future.wait(
+        groups.map((group) => GroupService()
+            .getGroupMembers(group["group_id"].toString())
+            .catchError((_) => <String, dynamic>{})),
+      );
+      for (var index = 0; index < groups.length; index++) {
+        final members = memberResponses[index]["data"];
+        groups[index]["actual_member_count"] =
+            members is List ? members.length : 0;
+      }
 
       if (mounted) {
         setState(() {
-          if (groupRes["data"] != null && groupRes["data"] is List) {
-            _groups = List<Map<String, dynamic>>.from(groupRes["data"]);
-          } else {
-            _groups = [];
-          }
+          _groups = groups;
 
           _isLoading = false;
         });
@@ -141,7 +153,8 @@ class _GroupsPageState extends State<GroupsPage> {
               onRefresh: _loadData,
               color: headerColor,
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                 children: [
                   // "My Groups" Title
                   const Text(
@@ -162,7 +175,10 @@ class _GroupsPageState extends State<GroupsPage> {
                   const SizedBox(height: 22),
 
                   // Active or Completed Groups
-                  if (_selectedTabIndex == 0) ..._buildActiveTab() else ..._buildCompletedTab(),
+                  if (_selectedTabIndex == 0)
+                    ..._buildActiveTab()
+                  else
+                    ..._buildCompletedTab(),
 
                   const SizedBox(height: 24),
 
@@ -194,7 +210,9 @@ class _GroupsPageState extends State<GroupsPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: _selectedTabIndex == 0 ? Colors.white : Colors.transparent,
+                  color: _selectedTabIndex == 0
+                      ? Colors.white
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: _selectedTabIndex == 0
                       ? [
@@ -211,7 +229,9 @@ class _GroupsPageState extends State<GroupsPage> {
                     "Active",
                     style: TextStyle(
                       fontSize: 15,
-                      fontWeight: _selectedTabIndex == 0 ? FontWeight.w700 : FontWeight.w500,
+                      fontWeight: _selectedTabIndex == 0
+                          ? FontWeight.w700
+                          : FontWeight.w500,
                       color: _selectedTabIndex == 0 ? primaryBrown : textMuted,
                     ),
                   ),
@@ -228,7 +248,9 @@ class _GroupsPageState extends State<GroupsPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: _selectedTabIndex == 1 ? Colors.white : Colors.transparent,
+                  color: _selectedTabIndex == 1
+                      ? Colors.white
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: _selectedTabIndex == 1
                       ? [
@@ -245,7 +267,9 @@ class _GroupsPageState extends State<GroupsPage> {
                     "Completed",
                     style: TextStyle(
                       fontSize: 15,
-                      fontWeight: _selectedTabIndex == 1 ? FontWeight.w700 : FontWeight.w500,
+                      fontWeight: _selectedTabIndex == 1
+                          ? FontWeight.w700
+                          : FontWeight.w500,
                       color: _selectedTabIndex == 1 ? primaryBrown : textMuted,
                     ),
                   ),
@@ -260,7 +284,8 @@ class _GroupsPageState extends State<GroupsPage> {
 
   /// Active Groups List
   List<Widget> _buildActiveTab() {
-    final activeGroups = _groups.where((g) => (g["status"] ?? "active") != "completed").toList();
+    final activeGroups =
+        _groups.where((g) => (g["status"] ?? "active") != "completed").toList();
 
     if (activeGroups.isEmpty) {
       return [
@@ -308,7 +333,8 @@ class _GroupsPageState extends State<GroupsPage> {
     final List<Widget> cardWidgets = [];
     for (int i = 0; i < activeGroups.length; i++) {
       final g = activeGroups[i];
-      final currentMembers = g["current_members"] ?? g["member_count"] ?? g["members_count"] ?? 1;
+      final currentMembers =
+          g["current_members"] ?? g["member_count"] ?? g["members_count"] ?? 1;
       final maxMembers = g["max_members"] ?? 10;
       final status = (g["status"] ?? "pending").toString().toUpperCase();
       final isPending = status == "PENDING";
@@ -338,7 +364,8 @@ class _GroupsPageState extends State<GroupsPage> {
   /// Completed Tab View
   List<Widget> _buildCompletedTab() {
     final completedGroups = _groups
-        .where((g) => (g["status"] ?? "").toString().toLowerCase() == "completed")
+        .where(
+            (g) => (g["status"] ?? "").toString().toLowerCase() == "completed")
         .toList();
 
     if (completedGroups.isEmpty) {
@@ -385,7 +412,8 @@ class _GroupsPageState extends State<GroupsPage> {
     final List<Widget> cardWidgets = [];
     for (int i = 0; i < completedGroups.length; i++) {
       final g = completedGroups[i];
-      final currentMembers = g["current_members"] ?? g["member_count"] ?? g["members_count"] ?? 1;
+      final currentMembers =
+          g["current_members"] ?? g["member_count"] ?? g["members_count"] ?? 1;
       final maxMembers = g["max_members"] ?? 10;
       if (i > 0) cardWidgets.add(const SizedBox(height: 18));
       cardWidgets.add(
@@ -449,7 +477,9 @@ class _GroupsPageState extends State<GroupsPage> {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: isPending ? const Color(0xFFFFF7ED) : const Color(0xFFFDF1EB),
+                  color: isPending
+                      ? const Color(0xFFFFF7ED)
+                      : const Color(0xFFFDF1EB),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Center(
@@ -488,7 +518,8 @@ class _GroupsPageState extends State<GroupsPage> {
               ),
               // Status Badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusBg,
                   borderRadius: BorderRadius.circular(14),
@@ -588,7 +619,8 @@ class _GroupsPageState extends State<GroupsPage> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
-                        color: isPending ? const Color(0xFFEA580C) : primaryBrown,
+                        color:
+                            isPending ? const Color(0xFFEA580C) : primaryBrown,
                       ),
                     ),
                   ],
@@ -651,7 +683,7 @@ class _GroupsPageState extends State<GroupsPage> {
   Widget _buildDashedCreateButton() {
     return GestureDetector(
       onTap: () async {
-        final res = await Navigator.pushNamed(context, '/create');
+        final res = await Navigator.pushNamed(context, '/groups/create');
         if (res == true) {
           _loadData();
         }
@@ -767,7 +799,8 @@ class DashedRectPainter extends CustomPainter {
     for (final PathMetric metric in path.computeMetrics()) {
       double distance = 0.0;
       while (distance < metric.length) {
-        final double length = (distance + dash < metric.length) ? dash : metric.length - distance;
+        final double length =
+            (distance + dash < metric.length) ? dash : metric.length - distance;
         dashPath.addPath(
           metric.extractPath(distance, distance + length),
           Offset.zero,
@@ -787,4 +820,3 @@ class DashedRectPainter extends CustomPainter {
         oldDelegate.radius != radius;
   }
 }
-

@@ -61,9 +61,7 @@ class GroupService {
         r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
       ).hasMatch(inviteCodeOrId);
 
-      final path = isUuid
-          ? '/groups/$inviteCodeOrId/join'
-          : '/groups/join';
+      final path = isUuid ? '/groups/$inviteCodeOrId/join' : '/groups/join';
 
       final data = isUuid ? null : {"invitation_code": inviteCodeOrId.trim()};
 
@@ -130,7 +128,8 @@ class GroupService {
     }
   }
 
-  Future<Map<String, dynamic>> updateGroup(String groupId, Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> updateGroup(
+      String groupId, Map<String, dynamic> data) async {
     try {
       final response = await _dio.patch('/groups/$groupId', data: data);
       if (response.data is Map<String, dynamic>) {

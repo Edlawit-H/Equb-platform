@@ -58,7 +58,8 @@ class EmptyGroupDashboard extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
                 side: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -69,17 +70,20 @@ class EmptyGroupDashboard extends StatelessWidget {
                   color: primaryOrange.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.add_circle_rounded, color: primaryOrange),
+                child:
+                    const Icon(Icons.add_circle_rounded, color: primaryOrange),
               ),
               title: const Text(
                 "Create New Equb",
                 style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
               ),
-              subtitle: const Text("Start your own savings circle with friends"),
+              subtitle:
+                  const Text("Start your own savings circle with friends"),
               trailing: const Icon(Icons.chevron_right, color: subtitleColor),
               onTap: () async {
                 Navigator.pop(ctx);
-                final res = await Navigator.pushNamed(context, '/create');
+                final res =
+                    await Navigator.pushNamed(context, '/groups/create');
                 if (res == true && onRefresh != null) {
                   onRefresh!();
                 }
@@ -87,7 +91,8 @@ class EmptyGroupDashboard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
                 side: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -98,13 +103,15 @@ class EmptyGroupDashboard extends StatelessWidget {
                   color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.group_add_rounded, color: Color(0xFF3B82F6)),
+                child: const Icon(Icons.group_add_rounded,
+                    color: Color(0xFF3B82F6)),
               ),
               title: const Text(
                 "Join with Code",
                 style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
               ),
-              subtitle: const Text("Enter an invitation code from an organizer"),
+              subtitle:
+                  const Text("Enter an invitation code from an organizer"),
               trailing: const Icon(Icons.chevron_right, color: subtitleColor),
               onTap: () {
                 Navigator.pop(ctx);

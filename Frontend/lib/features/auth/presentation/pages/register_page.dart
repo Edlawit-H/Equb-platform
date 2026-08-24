@@ -92,7 +92,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 // Card Container
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(28),
@@ -366,7 +367,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Something went wrong")),
+          SnackBar(
+            content: Text(e.toString().replaceFirst("Exception: ", "")),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       } finally {
         if (mounted) {
@@ -376,4 +380,3 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 }
-
