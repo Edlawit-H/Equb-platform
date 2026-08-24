@@ -19,3 +19,17 @@ export const phoneLookupVariants = (phone) => {
 
   return [...variants];
 };
+
+export const isValidPhoneNumber = (phone) => {
+  if (!phone || typeof phone !== 'string') return false;
+  const clean = phone.trim().replaceAll(/\s+/g, '');
+  // Valid Ethiopian / international formats:
+  // 09xxxxxxxx or 07xxxxxxxx (10 digits)
+  // +2519xxxxxxxx or +2517xxxxxxxx (13 chars)
+  // 2519xxxxxxxx or 2517xxxxxxxx (12 digits)
+  // 9xxxxxxxx or 7xxxxxxxx (9 digits)
+  // Or standard E.164: ^\+?[1-9]\d{7,14}$
+  const ethiopianRegex = /^(?:\+251|251|0)?[79]\d{8}$/;
+  const generalE164Regex = /^\+?[1-9]\d{7,14}$/;
+  return ethiopianRegex.test(clean) || generalE164Regex.test(clean);
+};

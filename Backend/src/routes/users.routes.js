@@ -5,6 +5,8 @@ const router = Router();
 router.get("/me",protect,userController.getMyProfile);
 router.patch("/me",protect,userController.updateMyProfile);
 router.patch("/me/password",protect,userController.changePassword);
+router.post("/me/phone/send-otp",protect,userController.requestPhoneChangeOTP);
+router.post("/me/phone/verify-otp",protect,userController.verifyPhoneChangeOTP);
 router.get("/me/dashboard",protect,userController.getDashboard);
 router.get("/:id/groups",protect,userController.getUserGroups);
 export default router;

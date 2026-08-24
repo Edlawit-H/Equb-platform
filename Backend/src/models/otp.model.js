@@ -98,3 +98,29 @@ export const findValidResetOTP = async (
   return result.rows[0];
 
 };
+
+export const findValidPhoneUpdateOTP = async (
+  phone_number,
+  otp_code
+) => {
+
+  const result = await pool.query(
+    `
+    SELECT *
+    FROM otp_codes
+    WHERE phone_number = $1
+    AND otp_code = $2
+    AND purpose = 'phone_update'
+    AND verified = FALSE
+    AND expires_at > NOW()
+    ORDER BY created_at DESC
+    LIMIT 1
+    `,
+    [
+      phone_number,
+      otp_code
+    ]
+  );
+
+  return result.rows[0];
+};

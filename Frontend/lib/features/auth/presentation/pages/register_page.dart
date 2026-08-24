@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../data/api_service.dart';
 import '../pages/otp_verification_page.dart';
 
@@ -17,6 +18,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
 
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   bool isLoading = false;
 
   @override
@@ -98,7 +101,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: Colors.black.withValues(alpha: 0.04),
                         blurRadius: 24,
                         offset: const Offset(0, 8),
                       ),
@@ -114,15 +117,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 8),
                         _buildTextField(
                           controller: nameController,
-                          hintText: "John Doe",
+                          hintText: "e.g. Abebe Bikila",
                           hintColor: hintColor,
                           fillColor: inputFillColor,
                           borderColor: borderColor,
                           primaryColor: primaryColor,
-                          validator: (value) =>
-                              (value == null || value.trim().isEmpty)
-                                  ? "Enter your name"
-                                  : null,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return "Enter your full name";
+                            }
+                            if (value.trim().length < 2) {
+                              return "Name must be at least 2 characters";
+                            }
+                            if (!RegExp(r"^[a-zA-Z\u1200-\u137F\s\.\-']+$").hasMatch(value.trim())) {
+                              return "Name can only contain letters, spaces, and hyphens";
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 18),
 
@@ -131,16 +142,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 8),
                         _buildTextField(
                           controller: phoneController,
-                          hintText: "+123 456 7890",
+                          hintText: "0912345678 or +251912345678",
                           keyboardType: TextInputType.phone,
                           hintColor: hintColor,
                           fillColor: inputFillColor,
                           borderColor: borderColor,
                           primaryColor: primaryColor,
-                          validator: (value) =>
-                              (value == null || value.trim().isEmpty)
-                                  ? "Enter phone number"
-                                  : null,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(RegExp(r'[\d+]')),
+                          ],
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return "Enter your phone number";
+                            }
+                            final clean = value.trim();
+                            final ethiopianRegex = RegExp(r'^(?:\+251|251|0)?[79]\d{8}$');
+                            final generalPhoneRegex = RegExp(r'^\+?[1-9]\d{7,14}$');
+                            if (!ethiopianRegex.hasMatch(clean) && !generalPhoneRegex.hasMatch(clean)) {
+                              return "Enter a valid phone number (e.g. 0912345678 or +251912345678)";
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 18),
 
@@ -150,11 +172,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         _buildTextField(
                           controller: passwordController,
                           hintText: "••••••••",
-                          obscureText: true,
+                          obscureText: _obscurePassword,
                           hintColor: hintColor,
                           fillColor: inputFillColor,
                           borderColor: borderColor,
                           primaryColor: primaryColor,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                              color: hintColor,
+                              size: 20,
+                            ),
+                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return "Enter password";
@@ -173,12 +203,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         _buildTextField(
                           controller: confirmPasswordController,
                           hintText: "••••••••",
-                          obscureText: true,
+                          obscureText: _obscureConfirmPassword,
                           hintColor: hintColor,
                           fillColor: inputFillColor,
                           borderColor: borderColor,
                           primaryColor: primaryColor,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                              color: hintColor,
+                              size: 20,
+                            ),
+                            onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                          ),
                           validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return "Confirm your password";
+                            }
                             if (value != passwordController.text) {
                               return "Passwords do not match";
                             }
@@ -196,7 +237,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               borderRadius: BorderRadius.circular(14),
                               boxShadow: [
                                 BoxShadow(
-                                  color: primaryColor.withOpacity(0.35),
+                                  color: primaryColor.withValues(alpha: 0.35),
                                   blurRadius: 16,
                                   offset: const Offset(0, 6),
                                 ),
@@ -208,7 +249,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 backgroundColor: primaryColor,
                                 foregroundColor: Colors.white,
                                 disabledBackgroundColor:
-                                    primaryColor.withOpacity(0.7),
+                                    primaryColor.withValues(alpha: 0.7),
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
@@ -299,6 +340,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     required Color primaryColor,
     bool obscureText = false,
     TextInputType keyboardType = TextInputType.text,
+    List<TextInputFormatter>? inputFormatters,
+    Widget? suffixIcon,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
@@ -306,6 +349,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       obscureText: obscureText,
       obscuringCharacter: '•',
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       style: const TextStyle(
         fontSize: 15,
         color: Color(0xFF0F172A),
@@ -321,6 +365,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         filled: true,
         fillColor: fillColor,
+        suffixIcon: suffixIcon,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         enabledBorder: OutlineInputBorder(
@@ -349,7 +394,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       try {
         await ApiService.register(
-          phone: phoneController.text,
+          phone: phoneController.text.trim(),
         );
         if (!mounted) return;
 
@@ -366,7 +411,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Something went wrong")),
+          SnackBar(
+            content: Text(e.toString().replaceAll("Exception: ", "")),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       } finally {
         if (mounted) {

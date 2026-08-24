@@ -14,4 +14,4 @@ CREATE INDEX IF NOT EXISTS idx_otp_codes_purpose ON otp_codes(purpose);
 CREATE INDEX IF NOT EXISTS idx_otp_codes_expires ON otp_codes(expires_at);
 
 ALTER TABLE otp_codes ADD CONSTRAINT chk_otp_purpose
-  CHECK (purpose IN ('registration', 'forgot_password'));
+  CHECK (purpose IN ('registration', 'forgot_password', 'phone_update'));

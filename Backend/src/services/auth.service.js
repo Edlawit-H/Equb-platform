@@ -37,12 +37,11 @@ import {
   verifyRefreshToken
 } from "../utils/jwt.js";
 import { AppError } from "../utils/AppError.js";
-
-
+import { isValidPhoneNumber } from "../utils/phone.js";
 
 export const registerUser = async (data) => {
-  if (!data?.phone_number) {
-    throw new AppError("Phone number is required", 400);
+  if (!data?.phone_number || !isValidPhoneNumber(data.phone_number)) {
+    throw new AppError("Please provide a valid phone number (e.g. 0912345678 or +251912345678)", 400);
   }
 
   const existing =
@@ -95,12 +94,22 @@ export const verifyRegistrationOTP =
       throw new AppError("All fields are required", 400);
     }
 
+    if (!isValidPhoneNumber(data.phone_number)) {
+      throw new AppError("Please provide a valid phone number", 400);
+    }
+
+    if (data.full_name.trim().length < 2) {
+      throw new AppError("Full name must be at least 2 characters", 400);
+    }
+
+    if (data.password.length < 6) {
+      throw new AppError("Password must be at least 6 characters", 400);
+    }
+
     const client =
       await pool.connect();
     try {
-
       await client.query("BEGIN");
-
 
       const otpRecord =
         await findValidOTP(
@@ -109,63 +118,64 @@ export const verifyRegistrationOTP =
         );
 
 
-
       if (!otpRecord) {
         throw new AppError("Invalid or expired OTP", 400);
       }
 
 
       const hashedPassword =
-        await bcrypt.hash(data.password, 10);
-
-
-
-      const userResult =
-        await client.query(
-          `
-INSERT INTO users
-(
- phone_number,
- password_hash,
- full_name
-)
-VALUES($1,$2,$3)
-RETURNING *
-`,
-          [
-            data.phone_number,
-            hashedPassword,
-            data.full_name
-          ]
+        await bcrypt.hash(
+          data.password,
+          10
         );
 
-
       const user =
-        userResult.rows[0];
+        await createUser({
+          full_name: data.full_name,
+          phone_number: data.phone_number,
+          email: data.email || null,
+          password_hash: hashedPassword,
+        }, client);
 
+
+      // Create default wallet
+      await client.query(
+        `
+        INSERT INTO wallets (user_id, balance)
+        VALUES ($1, 0.00);
+        `,
+        [user.user_id]
+      );
+
+      // Create default notification preferences
+      await client.query(
+        `
+        INSERT INTO notification_preferences (
+          user_id,
+          push_notifications,
+          sms_notifications,
+          email_notifications
+        )
+        VALUES ($1, true, true, true);
+        `,
+        [user.user_id]
+      );
 
 
       await client.query(
         `
 UPDATE otp_codes
-SET user_id=$1,
-    verified=true
-WHERE otp_id=$2
+SET verified = true
+WHERE otp_id=$1
 `,
         [
-          user.user_id,
           otpRecord.otp_id
         ]
       );
 
-
-
       await client.query("COMMIT");
 
-
       const safeUser = sanitizeUser(user);
-
-      const token = generateToken(user);
       const payload = {
         userId: user.user_id,
         role: user.role,
@@ -200,6 +210,10 @@ WHERE otp_id=$2
 export const loginUser = async (data) => {
   if (!data?.phone_number || !data?.password) {
     throw new AppError("Phone number and password are required", 400);
+  }
+
+  if (!isValidPhoneNumber(data.phone_number)) {
+    throw new AppError("Please provide a valid phone number", 400);
   }
 
   const user =

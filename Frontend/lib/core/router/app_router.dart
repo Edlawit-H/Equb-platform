@@ -18,6 +18,7 @@ import '../../features/groups/presentation/pages/group_activity_page.dart';
 import '../../features/groups/presentation/pages/invite_members_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/profile/presentation/pages/edit_profile_page.dart';
+import '../../features/profile/presentation/pages/change_phone_page.dart';
 import '../../features/profile/presentation/pages/change_password_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/notifications/presentation/pages/notification_detail_page.dart';
@@ -91,6 +92,8 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
     page = const ProfilePage();
   } else if (name == '/profile/edit') {
     page = const EditProfilePage();
+  } else if (name == '/profile/change-phone') {
+    page = ChangePhonePage(currentPhone: args is String ? args : '');
   } else if (name == '/change-password') {
     page = const ChangePasswordPage();
   }

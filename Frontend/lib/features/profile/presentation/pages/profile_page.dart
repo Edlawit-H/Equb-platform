@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../data/profile_service.dart';
+import 'edit_profile_page.dart';
+import 'change_phone_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -35,6 +37,31 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _navigateToEditProfile() async {
+    final updated = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditProfilePage(profile: _profile),
+      ),
+    );
+    if (updated == true && mounted) {
+      _loadProfile();
+    }
+  }
+
+  void _navigateToChangePhone() async {
+    final currentPhone = _profile?['phone_number'] ?? '';
+    final updated = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChangePhonePage(currentPhone: currentPhone),
+      ),
+    );
+    if (updated == true && mounted) {
+      _loadProfile();
     }
   }
 
@@ -244,13 +271,34 @@ class _ProfilePageState extends State<ProfilePage> {
                             style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w700, fontSize: 15, color: textDark),
                           ),
                           const SizedBox(height: 16),
-                          _infoRow(Icons.person_outline_rounded, 'Full Name', name),
+                          _infoRow(
+                            Icons.person_outline_rounded,
+                            'Full Name',
+                            name,
+                            onTap: _navigateToEditProfile,
+                            trailingText: 'Edit',
+                          ),
                           const Divider(height: 24),
-                          _infoRow(Icons.phone_outlined, 'Phone', phone),
+                          _infoRow(
+                            Icons.phone_outlined,
+                            'Phone',
+                            phone,
+                            onTap: _navigateToChangePhone,
+                            trailingText: 'Change',
+                          ),
                           const Divider(height: 24),
-                          _infoRow(Icons.email_outlined, 'Email', email == 'null' ? '—' : email),
+                          _infoRow(
+                            Icons.email_outlined,
+                            'Email',
+                            email == 'null' ? '—' : email,
+                            onTap: _navigateToEditProfile,
+                          ),
                           const Divider(height: 24),
-                          _infoRow(Icons.verified_outlined, 'Status', status.capitalize()),
+                          _infoRow(
+                            Icons.verified_outlined,
+                            'Status',
+                            status.capitalize(),
+                          ),
                         ],
                       ),
                     ),
@@ -266,7 +314,13 @@ class _ProfilePageState extends State<ProfilePage> {
                         _actionTile(
                           icon: Icons.edit_outlined,
                           label: 'Edit Profile',
-                          onTap: () => Navigator.pushNamed(context, '/profile/edit'),
+                          onTap: _navigateToEditProfile,
+                        ),
+                        const SizedBox(height: 10),
+                        _actionTile(
+                          icon: Icons.phone_android_rounded,
+                          label: 'Change Phone Number (OTP)',
+                          onTap: _navigateToChangePhone,
                         ),
                         const SizedBox(height: 10),
                         _actionTile(
@@ -318,7 +372,9 @@ class _ProfilePageState extends State<ProfilePage> {
                             );
                             if (confirm == true && context.mounted) {
                               await const FlutterSecureStorage().deleteAll();
-                              Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                              if (context.mounted) {
+                                Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                              }
                             }
                           },
                         ),
@@ -333,20 +389,68 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _infoRow(IconData icon, String label, String value) {
-    return Row(
+  Widget _infoRow(
+    IconData icon,
+    String label,
+    String value, {
+    VoidCallback? onTap,
+    String? trailingText,
+  }) {
+    final rowWidget = Row(
       children: [
         Icon(icon, size: 20, color: primaryOrange),
         const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(fontFamily: 'Poppins', fontSize: 11, color: textMuted)),
-            Text(value, style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 14, color: textDark)),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontFamily: 'Poppins', fontSize: 11, color: textMuted)),
+              Text(value, style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 14, color: textDark)),
+            ],
+          ),
         ),
+        if (trailingText != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: primaryOrange.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  trailingText,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    color: Color(0xFFEA580C),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                const Icon(Icons.chevron_right_rounded, color: Color(0xFFEA580C), size: 14),
+              ],
+            ),
+          )
+        else if (onTap != null)
+          Icon(Icons.chevron_right_rounded, color: textMuted.withValues(alpha: 0.4), size: 18),
       ],
     );
+
+    if (onTap != null) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: rowWidget,
+        ),
+      );
+    }
+
+    return rowWidget;
   }
 
   Widget _actionTile({

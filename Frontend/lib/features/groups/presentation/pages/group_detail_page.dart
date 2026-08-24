@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../data/group_service.dart';
 import '../../../contributions/data/contributions_service.dart';
 import '../../../reports/data/reports_service.dart';
+import '../../../profile/data/profile_service.dart';
 
 class GroupDetailsPage extends StatefulWidget {
   final Map<String, dynamic>? group;
@@ -25,6 +26,7 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
   Map<String, dynamic> _groupData = {};
   List<Map<String, dynamic>> _members = [];
   Map<String, dynamic> _groupSummary = {};
+  String? _currentUserId;
   bool _isLoading = true;
 
   static const Color headerColor = Color(0xFFEA580C);
@@ -88,6 +90,30 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
     return val is int ? val : int.tryParse('$val') ?? 0;
   }
 
+  bool get _isAdmin {
+    final explicitRole = (_groupData["role"] ?? widget.group?["role"])?.toString().toLowerCase();
+    if (explicitRole == "admin" || explicitRole == "creator" || explicitRole == "owner") {
+      return true;
+    }
+
+    final adminId = (_groupData["admin_id"] ?? widget.group?["admin_id"])?.toString();
+    if (_currentUserId != null && adminId != null && _currentUserId!.isNotEmpty && adminId.isNotEmpty) {
+      if (_currentUserId == adminId) return true;
+    }
+
+    if (_currentUserId != null && _currentUserId!.isNotEmpty && _members.isNotEmpty) {
+      final myMember = _members.firstWhere(
+        (m) => m["user_id"]?.toString() == _currentUserId,
+        orElse: () => <String, dynamic>{},
+      );
+      if (myMember.isNotEmpty && myMember["role"]?.toString().toLowerCase() == "admin") {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   Future<void> _loadDetails() async {
     if (_groupId.isEmpty) {
       setState(() => _isLoading = false);
@@ -101,14 +127,22 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
         _groupService.getGroupById(_groupId).catchError((_) => <String, dynamic>{}),
         _groupService.getGroupMembers(_groupId).catchError((_) => <String, dynamic>{}),
         _reportsService.getGroupSummary(_groupId).catchError((_) => <String, dynamic>{}),
+        ProfileService.getProfile().catchError((_) => <String, dynamic>{}),
       ]);
 
       final groupRes = futures[0];
       final membersRes = futures[1];
       final summaryRes = futures[2];
+      final profileRes = futures[3];
 
       if (mounted) {
         setState(() {
+          if (profileRes["data"] != null && profileRes["data"] is Map) {
+            _currentUserId = profileRes["data"]["user_id"]?.toString();
+          } else if (profileRes["user_id"] != null) {
+            _currentUserId = profileRes["user_id"]?.toString();
+          }
+
           if (groupRes["data"] != null && groupRes["data"] is Map) {
             _groupData = {
               ..._groupData,
@@ -966,13 +1000,56 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
     }
   }
 
-  /// Fixed Bottom Action Button: "Start Group" or "Make Contribution"
+  /// Fixed Bottom Action Button: "Start Group" (Admin only) or "Make Contribution"
   Widget _buildBottomAction(String groupTitle, dynamic amount) {
     final isPending = _groupStatus == "PENDING";
     final isCompleted = _groupStatus == "COMPLETED";
 
     if (isCompleted) {
       return const SizedBox.shrink();
+    }
+
+    if (isPending && !_isAdmin) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            top: BorderSide(
+              color: Color(0xFFE2E8F0),
+              width: 1.0,
+            ),
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.hourglass_top_rounded, color: primaryOrange, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  "Waiting for admin to start the group",
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13.5,
+                    color: textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
 
     return Container(

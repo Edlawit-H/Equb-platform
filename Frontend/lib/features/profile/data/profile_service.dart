@@ -31,9 +31,16 @@ class ProfileService {
 
   static Future<Map<String, dynamic>> updateProfile({
     required String fullName,
-    required String email,
+    String? email,
   }) async {
     final token = await _getToken();
+
+    final body = <String, dynamic>{
+      "full_name": fullName,
+    };
+    if (email != null && email.trim().isNotEmpty && email != '—' && email != 'null') {
+      body["email"] = email.trim();
+    }
 
     final response = await http.patch(
       Uri.parse("$baseUrl/users/me"),
@@ -41,12 +48,86 @@ class ProfileService {
         "Content-Type": "application/json",
         "Authorization": "Bearer $token",
       },
+      body: jsonEncode(body),
+    );
+
+    final resBody = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return resBody;
+    }
+    throw Exception(resBody['message'] ?? "Failed to update profile");
+  }
+
+  static Future<Map<String, dynamic>> requestPhoneChangeOTP({
+    required String newPhone,
+  }) async {
+    final token = await _getToken();
+
+    final response = await http.post(
+      Uri.parse("$baseUrl/users/me/phone/send-otp"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
       body: jsonEncode({
-        "full_name": fullName,
-        "email": email,
+        "phone_number": newPhone.trim(),
       }),
     );
 
-    return jsonDecode(response.body);
+    final resBody = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return resBody;
+    }
+    throw Exception(resBody['message'] ?? "Failed to send OTP");
+  }
+
+  static Future<Map<String, dynamic>> verifyPhoneChangeOTP({
+    required String newPhone,
+    required String otp,
+  }) async {
+    final token = await _getToken();
+
+    final response = await http.post(
+      Uri.parse("$baseUrl/users/me/phone/verify-otp"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+      body: jsonEncode({
+        "phone_number": newPhone.trim(),
+        "otp": otp.trim(),
+      }),
+    );
+
+    final resBody = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return resBody;
+    }
+    throw Exception(resBody['message'] ?? "Failed to verify OTP");
+  }
+
+  static Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final token = await _getToken();
+
+    final response = await http.patch(
+      Uri.parse("$baseUrl/users/me/password"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+      body: jsonEncode({
+        "current_password": currentPassword,
+        "new_password": newPassword,
+      }),
+    );
+
+    final resBody = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return resBody;
+    }
+    throw Exception(resBody['message'] ?? "Failed to change password");
   }
 }

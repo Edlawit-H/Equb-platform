@@ -78,3 +78,36 @@ export async function getUserGroups(req, res, next) {
         next(err);
     }
 }
+
+export async function requestPhoneChangeOTP(req, res, next) {
+    try {
+        const result = await userService.requestPhoneChangeOTP(
+            req.user.userId,
+            req.body.phone_number || req.body.phone
+        );
+
+        res.status(200).json({
+            message: result.message,
+            data: result,
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
+export async function verifyPhoneChangeOTP(req, res, next) {
+    try {
+        const updatedUser = await userService.verifyPhoneChangeOTP(
+            req.user.userId,
+            req.body.phone_number || req.body.phone,
+            req.body.otp_code || req.body.otp
+        );
+
+        res.status(200).json({
+            message: "Phone number updated successfully",
+            data: updatedUser,
+        });
+    } catch (err) {
+        next(err);
+    }
+}

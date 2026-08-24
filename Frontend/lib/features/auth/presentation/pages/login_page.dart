@@ -10,10 +10,11 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool isLoading = false;
-  final bool _obscurePassword = true;
+  bool _obscurePassword = true;
 
   static const Color primaryColor = Color(0xFFFF5C00);
 
@@ -25,18 +26,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void loginUser() async {
-    final phone = phoneController.text.trim();
-    final password = passwordController.text.trim();
-
-    if (phone.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Please enter both phone number and password"),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+    if (!_formKey.currentState!.validate()) {
       return;
     }
+
+    final phone = phoneController.text.trim();
+    final password = passwordController.text;
 
     setState(() {
       isLoading = true;
@@ -130,104 +125,163 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ],
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Phone Number Label & Input
-                            const Text(
-                              "Phone Number",
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1E293B),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextField(
-                              controller: phoneController,
-                              keyboardType: TextInputType.phone,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                color: Color(0xFF0F172A),
-                              ),
-                              decoration: InputDecoration(
-                                hintText: "Enter your phone number",
-                                hintStyle: const TextStyle(
-                                  color: Color(0xFF94A3B8),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Phone Number Label & Input
+                              const Text(
+                                "Phone Number",
+                                style: TextStyle(
                                   fontSize: 15,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                                filled: true,
-                                fillColor: const Color(0xFFF8FAFC),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 16,
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: const BorderSide(
-                                    color: Color(0xFFE2E8F0),
-                                    width: 1.2,
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: const BorderSide(
-                                    color: primaryColor,
-                                    width: 1.5,
-                                  ),
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1E293B),
                                 ),
                               ),
-                            ),
-
-                            const SizedBox(height: 20),
-
-                            // Password Label & Input
-                            const Text(
-                              "Password",
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1E293B),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextField(
-                              controller: passwordController,
-                              obscureText: _obscurePassword,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                color: Color(0xFF0F172A),
-                              ),
-                              decoration: InputDecoration(
-                                hintText: "Password",
-                                hintStyle: const TextStyle(
-                                  color: Color(0xFF94A3B8),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: phoneController,
+                                keyboardType: TextInputType.phone,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(RegExp(r'[\d+]')),
+                                ],
+                                style: const TextStyle(
                                   fontSize: 15,
-                                  fontWeight: FontWeight.w400,
+                                  color: Color(0xFF0F172A),
                                 ),
-                                filled: true,
-                                fillColor: const Color(0xFFF8FAFC),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 16,
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: const BorderSide(
-                                    color: Color(0xFFE2E8F0),
-                                    width: 1.2,
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return "Enter your phone number";
+                                  }
+                                  final clean = value.trim();
+                                  final ethiopianRegex = RegExp(r'^(?:\+251|251|0)?[79]\d{8}$');
+                                  final generalPhoneRegex = RegExp(r'^\+?[1-9]\d{7,14}$');
+                                  if (!ethiopianRegex.hasMatch(clean) && !generalPhoneRegex.hasMatch(clean)) {
+                                    return "Enter a valid phone number (e.g. 0912345678 or +251912345678)";
+                                  }
+                                  return null;
+                                },
+                                decoration: InputDecoration(
+                                  hintText: "0912345678 or +251912345678",
+                                  hintStyle: const TextStyle(
+                                    color: Color(0xFF94A3B8),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w400,
                                   ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: const BorderSide(
-                                    color: primaryColor,
-                                    width: 1.5,
+                                  filled: true,
+                                  fillColor: const Color(0xFFF8FAFC),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 16,
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFE2E8F0),
+                                      width: 1.2,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: const BorderSide(
+                                      color: primaryColor,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  errorBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: const BorderSide(
+                                      color: Colors.redAccent,
+                                      width: 1.2,
+                                    ),
+                                  ),
+                                  focusedErrorBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: const BorderSide(
+                                      color: Colors.redAccent,
+                                      width: 1.5,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
+
+                              const SizedBox(height: 20),
+
+                              // Password Label & Input
+                              const Text(
+                                "Password",
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1E293B),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: passwordController,
+                                obscureText: _obscurePassword,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  color: Color(0xFF0F172A),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return "Enter your password";
+                                  }
+                                  return null;
+                                },
+                                decoration: InputDecoration(
+                                  hintText: "Password",
+                                  hintStyle: const TextStyle(
+                                    color: Color(0xFF94A3B8),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF8FAFC),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                      color: const Color(0xFF94A3B8),
+                                      size: 20,
+                                    ),
+                                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 16,
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFE2E8F0),
+                                      width: 1.2,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: const BorderSide(
+                                      color: primaryColor,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  errorBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: const BorderSide(
+                                      color: Colors.redAccent,
+                                      width: 1.2,
+                                    ),
+                                  ),
+                                  focusedErrorBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: const BorderSide(
+                                      color: Colors.redAccent,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
 
                             const SizedBox(height: 14),
 
@@ -292,8 +346,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                       ),
+                    ),
 
-                      const SizedBox(height: 32),
+                    const SizedBox(height: 32),
 
                       // Don't have an account? Register Link
                       GestureDetector(

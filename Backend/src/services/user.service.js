@@ -1,5 +1,9 @@
 import pool from "../config/db.js";
 import bcrypt from "bcrypt";
+import { AppError } from "../utils/AppError.js";
+import { generateOTP } from "../utils/otp.js";
+import { phoneLookupVariants } from "../utils/phone.js";
+import { createOTP, findValidPhoneUpdateOTP, markOTPVerified } from "../models/otp.model.js";
 
 export async function getMyProfile(userId) {
 
@@ -295,4 +299,116 @@ export async function getUserGroups(userId) {
     );
 
     return rows;
+}
+
+export async function requestPhoneChangeOTP(userId, newPhoneNumber) {
+    if (!newPhoneNumber || typeof newPhoneNumber !== "string" || newPhoneNumber.trim() === "") {
+        throw new AppError("Valid phone number is required", 400);
+    }
+
+    const trimmedPhone = newPhoneNumber.trim();
+    const variants = phoneLookupVariants(trimmedPhone);
+
+    // Check if phone number is already registered to another active user
+    const { rows: existingUsers } = await pool.query(
+        `
+        SELECT user_id
+        FROM users
+        WHERE phone_number = ANY($1::text[])
+          AND user_id <> $2
+          AND is_deleted = FALSE;
+        `,
+        [variants, userId]
+    );
+
+    if (existingUsers.length > 0) {
+        throw new AppError("Phone number is already registered to another account", 400);
+    }
+
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Invalidate previous phone_update OTPs for this phone
+    await pool.query(
+        `
+        UPDATE otp_codes
+        SET verified = TRUE
+        WHERE phone_number = ANY($1::text[])
+          AND purpose = 'phone_update';
+        `,
+        [variants]
+    );
+
+    // Create new OTP
+    await createOTP({
+        phone_number: trimmedPhone,
+        otp_code: otp,
+        purpose: "phone_update",
+        expires_at: expiresAt,
+    });
+
+    console.log(`[Phone Change OTP] Sent to ${trimmedPhone}: ${otp}`);
+
+    return {
+        message: "OTP sent successfully to " + trimmedPhone,
+        phone_number: trimmedPhone,
+    };
+}
+
+export async function verifyPhoneChangeOTP(userId, newPhoneNumber, otpCode) {
+    if (!newPhoneNumber || !otpCode) {
+        throw new AppError("Phone number and OTP code are required", 400);
+    }
+
+    const trimmedPhone = newPhoneNumber.trim();
+    const trimmedOtp = otpCode.toString().trim();
+    const variants = phoneLookupVariants(trimmedPhone);
+
+    // Find valid OTP among phone variants
+    let otpRecord = null;
+    for (const p of variants) {
+        otpRecord = await findValidPhoneUpdateOTP(p, trimmedOtp);
+        if (otpRecord) break;
+    }
+
+    if (!otpRecord) {
+        throw new AppError("Invalid or expired OTP", 400);
+    }
+
+    // Check if another user took this phone in the meantime
+    const { rows: existingUsers } = await pool.query(
+        `
+        SELECT user_id
+        FROM users
+        WHERE phone_number = ANY($1::text[])
+          AND user_id <> $2
+          AND is_deleted = FALSE;
+        `,
+        [variants, userId]
+    );
+
+    if (existingUsers.length > 0) {
+        throw new AppError("Phone number is already in use by another user", 400);
+    }
+
+    // Mark OTP used
+    await markOTPVerified(otpRecord.otp_id);
+
+    // Update user's phone number
+    const { rows: updatedRows } = await pool.query(
+        `
+        UPDATE users
+        SET phone_number = $1
+        WHERE user_id = $2
+          AND is_deleted = FALSE
+        RETURNING user_id, full_name, phone_number, email, profile_image, role, status;
+        `,
+        [trimmedPhone, userId]
+    );
+
+    if (updatedRows.length !== 1) {
+        throw new AppError("User not found", 404);
+    }
+
+    return updatedRows[0];
 }
