@@ -7,7 +7,9 @@ import '../../../../core/widgets/error_snackbar.dart';
 import '../../data/reports_service.dart';
 
 class ExportReportPage extends StatefulWidget {
-  const ExportReportPage({super.key});
+  final String? groupId;
+
+  const ExportReportPage({super.key, this.groupId});
 
   @override
   State<ExportReportPage> createState() => _ExportReportPageState();
@@ -34,9 +36,19 @@ class _ExportReportPageState extends State<ExportReportPage> {
   Future<void> _exportPdf() async {
     setState(() => _loadingPdf = true);
     try {
-      final url = await _service.getExportUrl('/reports/export/pdf');
-      _triggerDownload(url, 'equb_financial_report.txt');
-      if (mounted) setState(() { _pdfDone = true; _loadingPdf = false; });
+      final url = widget.groupId == null
+          ? await _service.getExportUrl('/reports/export/pdf')
+          : await _service.getGroupExportUrl(widget.groupId!, excel: false);
+      _triggerDownload(
+          url,
+          widget.groupId == null
+              ? 'equb_financial_report.txt'
+              : 'equb_group_report.txt');
+      if (mounted)
+        setState(() {
+          _pdfDone = true;
+          _loadingPdf = false;
+        });
     } catch (e) {
       if (mounted) {
         setState(() => _loadingPdf = false);
@@ -48,9 +60,15 @@ class _ExportReportPageState extends State<ExportReportPage> {
   Future<void> _exportExcel() async {
     setState(() => _loadingExcel = true);
     try {
-      final url = await _service.getExportUrl('/reports/export/excel');
+      final url = widget.groupId == null
+          ? await _service.getExportUrl('/reports/export/excel')
+          : await _service.getGroupExportUrl(widget.groupId!, excel: true);
       _triggerDownload(url, 'financial_report.csv');
-      if (mounted) setState(() { _excelDone = true; _loadingExcel = false; });
+      if (mounted)
+        setState(() {
+          _excelDone = true;
+          _loadingExcel = false;
+        });
     } catch (e) {
       if (mounted) {
         setState(() => _loadingExcel = false);
@@ -64,7 +82,9 @@ class _ExportReportPageState extends State<ExportReportPage> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Export Report', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
+        title: const Text('Export Report',
+            style:
+                TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
         backgroundColor: Colors.white,
         foregroundColor: AppTheme.darkText,
         elevation: 0,
@@ -94,9 +114,17 @@ class _ExportReportPageState extends State<ExportReportPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Financial Report',
-                            style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18)),
-                        Text('Tap to download — file saves to your Downloads folder',
-                            style: TextStyle(fontFamily: 'Poppins', color: Colors.white70, fontSize: 12)),
+                            style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                fontSize: 18)),
+                        Text(
+                            'Tap to download — file saves to your Downloads folder',
+                            style: TextStyle(
+                                fontFamily: 'Poppins',
+                                color: Colors.white70,
+                                fontSize: 12)),
                       ],
                     ),
                   ),
@@ -106,14 +134,19 @@ class _ExportReportPageState extends State<ExportReportPage> {
 
             const SizedBox(height: 28),
             const Text('Export Format',
-                style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, color: AppTheme.darkText, fontSize: 15)),
+                style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.darkText,
+                    fontSize: 15)),
             const SizedBox(height: 16),
 
             // PDF / TXT card
             _ExportCard(
               icon: Icons.picture_as_pdf_rounded,
               title: 'Financial Report (.txt)',
-              subtitle: 'Full formatted transaction report — downloads instantly',
+              subtitle:
+                  'Full formatted transaction report — downloads instantly',
               color: AppTheme.error,
               loading: _loadingPdf,
               done: _pdfDone,
@@ -146,12 +179,16 @@ class _ExportReportPageState extends State<ExportReportPage> {
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.check_circle_rounded, color: AppTheme.success, size: 20),
+                    Icon(Icons.check_circle_rounded,
+                        color: AppTheme.success, size: 20),
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         'File downloaded to your Downloads folder.',
-                        style: TextStyle(fontFamily: 'Poppins', color: AppTheme.success, fontSize: 13),
+                        style: TextStyle(
+                            fontFamily: 'Poppins',
+                            color: AppTheme.success,
+                            fontSize: 13),
                       ),
                     ),
                   ],
@@ -197,7 +234,12 @@ class _ExportCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: done ? Border.all(color: AppTheme.success, width: 1.5) : null,
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2))
+          ],
         ),
         child: Row(
           children: [
@@ -209,7 +251,8 @@ class _ExportCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: done
-                  ? const Icon(Icons.check_rounded, color: AppTheme.success, size: 24)
+                  ? const Icon(Icons.check_rounded,
+                      color: AppTheme.success, size: 24)
                   : Icon(icon, color: color, size: 24),
             ),
             const SizedBox(width: 14),
@@ -219,7 +262,10 @@ class _ExportCard extends StatelessWidget {
                 children: [
                   Text(title,
                       style: const TextStyle(
-                          fontFamily: 'Poppins', fontWeight: FontWeight.w600, color: AppTheme.darkText, fontSize: 14)),
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.darkText,
+                          fontSize: 14)),
                   Text(done ? doneLabel : subtitle,
                       style: TextStyle(
                           fontFamily: 'Poppins',
@@ -230,7 +276,10 @@ class _ExportCard extends StatelessWidget {
             ),
             if (loading)
               const SizedBox(
-                  width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppTheme.primary))
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2.5, color: AppTheme.primary))
             else
               Icon(
                 done ? Icons.check_circle_rounded : Icons.download_rounded,

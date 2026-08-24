@@ -13,6 +13,7 @@ export async function getMyProfile(userId) {
             profile_image,
             role,
             status,
+            wallet_balance,
             created_at
         FROM users
         WHERE user_id = $1

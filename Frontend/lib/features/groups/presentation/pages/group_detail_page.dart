@@ -3,6 +3,10 @@ import 'package:flutter/services.dart';
 import '../../data/group_service.dart';
 import '../../../contributions/data/contributions_service.dart';
 import '../../../reports/data/reports_service.dart';
+import '../../../reports/presentation/pages/export_report_page.dart';
+import '../../../wallet/data/wallet_service.dart';
+import '../../../payouts/presentation/pages/payout_history_page.dart';
+import '../../../payouts/presentation/pages/payout_schedule_page.dart';
 
 class GroupDetailsPage extends StatefulWidget {
   final Map<String, dynamic>? group;
@@ -22,10 +26,12 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
   final _groupService = GroupService();
   final _reportsService = ReportsService();
   final _contributionsService = ContributionsService();
+  final _walletService = WalletService();
 
   Map<String, dynamic> _groupData = {};
   List<Map<String, dynamic>> _members = [];
   Map<String, dynamic> _groupSummary = {};
+  List<Map<String, dynamic>> _transactions = [];
   bool _isLoading = true;
 
   static const Color headerColor = Color(0xFFEA580C);
@@ -110,11 +116,15 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
         _reportsService
             .getGroupSummary(_groupId)
             .catchError((_) => <String, dynamic>{}),
+        _walletService
+            .getGroupTransactions(_groupId)
+            .catchError((_) => <String, dynamic>{}),
       ]);
 
       final groupRes = futures[0];
       final membersRes = futures[1];
       final summaryRes = futures[2];
+      final transactionsRes = futures[3];
 
       if (mounted) {
         setState(() {
@@ -130,6 +140,10 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
             _members = [];
           }
           _groupSummary = summaryRes;
+          final transactions = transactionsRes['transactions'];
+          _transactions = transactions is List
+              ? List<Map<String, dynamic>>.from(transactions)
+              : <Map<String, dynamic>>[];
           _isLoading = false;
         });
       }
@@ -595,18 +609,12 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: Color(0xFFE2E8F0),
-            width: 1.0,
-          ),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
       ),
       child: TabBar(
         controller: _tabController,
         indicatorColor: primaryOrange,
-        indicatorWeight: 3.0,
-        indicatorSize: TabBarIndicatorSize.tab,
+        indicatorWeight: 3,
         labelColor: primaryOrange,
         unselectedLabelColor: textMuted,
         labelStyle: const TextStyle(
@@ -830,11 +838,17 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
 
   /// Contributions / Cycle Summary Tab
   Widget _buildContributionsTab() {
-    final totalCollected = _groupSummary["total_collected"] ?? 0;
-    final totalPaidOut = _groupSummary["total_paid_out"] ?? 0;
-    final remainingCycles = _groupSummary["remaining_cycles"] ?? 0;
+    final financials = _groupSummary["financials"] is Map
+        ? Map<String, dynamic>.from(_groupSummary["financials"])
+        : _groupSummary;
+    final groupSummary = _groupSummary["group"] is Map
+        ? Map<String, dynamic>.from(_groupSummary["group"])
+        : _groupSummary;
+    final totalCollected = financials["total_collected"] ?? 0;
+    final totalPaidOut = financials["total_paid_out"] ?? 0;
+    final remainingCycles = groupSummary["remaining_cycles"] ?? 0;
     final completionPct =
-        (_groupSummary["cycle_completion_percentage"] ?? 0).toDouble();
+        (groupSummary["completion_percentage"] ?? 0).toDouble();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -844,13 +858,29 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
           Row(
             children: [
               Expanded(
-                child: _summaryCard("Total Pool", "ETB $totalCollected",
-                    Icons.savings_rounded, const Color(0xFF16A34A)),
+                child: _summaryCard(
+                  "Total Pool",
+                  "ETB $totalCollected",
+                  Icons.savings_rounded,
+                  const Color(0xFF16A34A),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _summaryCard("Total Paid Out", "ETB $totalPaidOut",
-                    Icons.send_rounded, primaryOrange),
+                child: GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const PayoutHistoryPage(),
+                    ),
+                  ),
+                  child: _summaryCard(
+                    "Total Paid Out",
+                    "ETB $totalPaidOut",
+                    Icons.send_rounded,
+                    primaryOrange,
+                  ),
+                ),
               ),
             ],
           ),
@@ -930,21 +960,113 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
 
   /// Activity Tab
   Widget _buildLoansTab() {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.history_rounded, size: 40, color: textMuted),
-            SizedBox(height: 8),
-            Text("Activity is recorded in real time for every cycle round.",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontFamily: 'Poppins', color: textMuted, fontSize: 13)),
-          ],
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+          child: SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _groupId.isEmpty
+                  ? null
+                  : () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ExportReportPage(groupId: _groupId),
+                        ),
+                      ),
+              icon: const Icon(Icons.download_rounded, size: 17),
+              label: const Text('Download Group Report'),
+            ),
+          ),
         ),
-      ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const PayoutSchedulePage(),
+                    ),
+                  ),
+                  icon: const Icon(Icons.timeline_rounded, size: 17),
+                  label: const Text('Payout Schedule'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const PayoutHistoryPage(),
+                    ),
+                  ),
+                  icon: const Icon(Icons.history_rounded, size: 17),
+                  label: const Text('Payout History'),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _transactions.isEmpty
+              ? const Center(
+                  child: Text('No group transactions yet',
+                      style:
+                          TextStyle(fontFamily: 'Poppins', color: textMuted)),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: _transactions.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final transaction = _transactions[index];
+                    final type =
+                        transaction['type']?.toString() ?? 'transaction';
+                    final isPayout = type == 'payout_credit';
+                    final memberName =
+                        transaction['full_name']?.toString() ?? 'Member';
+                    return ListTile(
+                      tileColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      leading: Icon(
+                        isPayout
+                            ? Icons.call_received_rounded
+                            : Icons.payments_rounded,
+                        color: isPayout ? activeGreen : primaryOrange,
+                      ),
+                      title: Text(
+                        isPayout ? 'Payout' : 'Contribution',
+                        style: const TextStyle(
+                            fontFamily: 'Poppins', fontWeight: FontWeight.w700),
+                      ),
+                      subtitle: Text(
+                        memberName,
+                        style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            color: textMuted,
+                            fontSize: 12),
+                      ),
+                      trailing: Text(
+                        '${isPayout ? '+' : '-'}ETB ${transaction['amount'] ?? 0}',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w700,
+                          color: isPayout ? activeGreen : textDark,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 

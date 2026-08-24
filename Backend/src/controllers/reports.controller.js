@@ -452,3 +452,60 @@ export const exportExcel = asyncWrapper(async (req, res) => {
   res.setHeader('Content-Disposition', 'attachment; filename="financial_report.csv"');
   res.status(200).send(csvContent);
 });
+
+async function assertGroupMember(userId, groupId) {
+  const { rows } = await pool.query(
+    `SELECT 1 FROM group_members
+     WHERE user_id = $1 AND group_id = $2 AND status = 'active'`,
+    [userId, groupId]
+  );
+  if (rows.length === 0) throw new AppError('You are not a member of this group', 403);
+}
+
+export const exportGroupPdf = asyncWrapper(async (req, res) => {
+  const { group_id: groupId } = req.query;
+  if (!groupId) throw new AppError('group_id parameter is required', 400);
+  await assertGroupMember(req.userId, groupId);
+
+  const { rows } = await pool.query(
+    `SELECT t.created_at, t.type, t.amount, t.status, u.full_name
+     FROM transactions t
+     JOIN users u ON u.user_id = t.user_id
+     WHERE t.group_id = $1
+     ORDER BY t.created_at DESC`,
+    [groupId]
+  );
+  const { rows: groupRows } = await pool.query(
+    `SELECT group_name FROM equb_groups WHERE group_id = $1`,
+    [groupId]
+  );
+  let content = `EQUB GROUP REPORT - ${groupRows[0]?.group_name || groupId}\n`;
+  content += `Generated: ${new Date().toISOString()}\n\n`;
+  content += `Date\tMember\tType\tAmount\tStatus\n`;
+  for (const row of rows) {
+    content += `${new Date(row.created_at).toISOString()}\t${row.full_name}\t${row.type}\tETB ${Number(row.amount).toFixed(2)}\t${row.status}\n`;
+  }
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="equb_group_report.txt"');
+  res.status(200).send(content);
+});
+
+export const exportGroupExcel = asyncWrapper(async (req, res) => {
+  const { group_id: groupId } = req.query;
+  if (!groupId) throw new AppError('group_id parameter is required', 400);
+  await assertGroupMember(req.userId, groupId);
+  const { rows } = await pool.query(
+    `SELECT t.transaction_id, u.full_name, t.type, t.amount, t.status, t.created_at
+     FROM transactions t
+     JOIN users u ON u.user_id = t.user_id
+     WHERE t.group_id = $1 ORDER BY t.created_at DESC`,
+    [groupId]
+  );
+  let csvContent = 'Transaction ID,Member,Type,Amount,Status,Date\n';
+  for (const row of rows) {
+    csvContent += `"${row.transaction_id}","${row.full_name}","${row.type}",${row.amount},"${row.status}","${row.created_at.toISOString()}"\n`;
+  }
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="equb_group_report.csv"');
+  res.status(200).send(csvContent);
+});

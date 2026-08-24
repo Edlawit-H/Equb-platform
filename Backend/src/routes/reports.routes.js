@@ -10,6 +10,8 @@ import {
   getAnalytics,
   exportPdf,
   exportExcel,
+  exportGroupPdf,
+  exportGroupExcel,
 } from '../controllers/reports.controller.js';
 
 const router = Router();
@@ -26,5 +28,7 @@ router.get('/financial', getFinancialOverview);
 router.get('/analytics', getAnalytics);
 router.get('/export/pdf', exportPdf);
 router.get('/export/excel', exportExcel);
+router.get('/export/group/pdf', exportGroupPdf);
+router.get('/export/group/excel', exportGroupExcel);
 
 export default router;

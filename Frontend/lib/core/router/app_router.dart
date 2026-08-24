@@ -117,7 +117,8 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
   } else if (name == '/contributions') {
     page = const ContributionListPage();
   } else if (name.startsWith('/contributions/pay')) {
-    page = PayContributionPage(contribution: (args as Map<String, dynamic>?) ?? {});
+    page = PayContributionPage(
+        contribution: (args as Map<String, dynamic>?) ?? {});
   } else if (name.startsWith('/contributions/')) {
     final id = name.replaceFirst('/contributions/', '');
     page = ContributionDetailPage(contributionId: id);
@@ -131,7 +132,8 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
   } else if (name == '/reports') {
     page = const AnalyticsDashboardPage();
   } else if (name == '/reports/export') {
-    page = const ExportReportPage();
+    page = ExportReportPage(
+        groupId: (args as Map<String, dynamic>?)?['group_id']?.toString());
   } else if (name == '/settings') {
     page = const SettingsPage();
   } else if (name == '/settings/language') {
