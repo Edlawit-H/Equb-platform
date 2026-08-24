@@ -266,18 +266,30 @@ export async function getUserGroups(userId) {
             g.group_id,
             g.group_name,
             g.description,
+            g.invitation_code,
             g.contribution_amount,
             g.cycle_duration,
             g.max_members,
             g.start_date,
             g.end_date,
             g.status,
-            gm.role
+            gm.role,
+            (
+                SELECT COUNT(*)::int
+                FROM group_members gm2
+                WHERE gm2.group_id = g.group_id
+            ) AS member_count,
+            (
+                SELECT COUNT(*)::int
+                FROM group_members gm2
+                WHERE gm2.group_id = g.group_id
+            ) AS current_members
         FROM group_members gm
         INNER JOIN equb_groups g
             ON gm.group_id = g.group_id
         WHERE gm.user_id = $1
         AND g.is_deleted = FALSE
+        ORDER BY g.created_at DESC
         `,
         [userId]
     );

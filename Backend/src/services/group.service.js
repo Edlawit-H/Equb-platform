@@ -21,6 +21,7 @@ export async function createGroup(data, userId) {
         await client.query("BEGIN");
 
         const invitation_code = generateInvitationCode();
+        const status = "pending";
 
         const { rows } = await client.query(
             `
@@ -31,10 +32,11 @@ export async function createGroup(data, userId) {
                 invitation_code,
                 contribution_amount,
                 cycle_duration,
-                max_members,
-                start_date
+                max_members,    
+                start_date,
+                status
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING *;
             `,
             [
@@ -45,7 +47,8 @@ export async function createGroup(data, userId) {
                 contribution_amount,
                 cycle_duration,
                 max_members,
-                start_date || null
+                start_date || null,
+                status
             ]
         );
 
@@ -88,10 +91,21 @@ export async function createGroup(data, userId) {
 export async function getGroups() {
     const { rows } = await pool.query(
         `
-        SELECT *
-        FROM equb_groups
-        WHERE is_deleted = FALSE
-        ORDER BY created_at DESC;
+        SELECT
+            g.*,
+            (
+                SELECT COUNT(*)::int
+                FROM group_members gm
+                WHERE gm.group_id = g.group_id
+            ) AS member_count,
+            (
+                SELECT COUNT(*)::int
+                FROM group_members gm
+                WHERE gm.group_id = g.group_id
+            ) AS current_members
+        FROM equb_groups g
+        WHERE g.is_deleted = FALSE
+        ORDER BY g.created_at DESC;
         `
     );
 
@@ -101,10 +115,21 @@ export async function getGroups() {
 export async function getGroupById(groupId) {
     const { rows } = await pool.query(
         `
-        SELECT *
-        FROM equb_groups
-        WHERE group_id = $1
-          AND is_deleted = FALSE;
+        SELECT
+            g.*,
+            (
+                SELECT COUNT(*)::int
+                FROM group_members gm
+                WHERE gm.group_id = g.group_id
+            ) AS member_count,
+            (
+                SELECT COUNT(*)::int
+                FROM group_members gm
+                WHERE gm.group_id = g.group_id
+            ) AS current_members
+        FROM equb_groups g
+        WHERE g.group_id = $1
+          AND g.is_deleted = FALSE;
         `,
         [groupId]
     );

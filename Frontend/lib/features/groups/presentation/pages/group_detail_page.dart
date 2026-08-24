@@ -22,6 +22,7 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
   final _reportsService = ReportsService();
   final _contributionsService = ContributionsService();
 
+  Map<String, dynamic> _groupData = {};
   List<Map<String, dynamic>> _members = [];
   Map<String, dynamic> _groupSummary = {};
   bool _isLoading = true;
@@ -36,6 +37,7 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
   @override
   void initState() {
     super.initState();
+    _groupData = Map<String, dynamic>.from(widget.group ?? {});
     _tabController = TabController(length: 3, vsync: this);
     _loadDetails();
   }
@@ -46,7 +48,45 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
     super.dispose();
   }
 
-  String get _groupId => widget.group?["group_id"] ?? widget.group?["id"] ?? "";
+  String get _groupId =>
+      _groupData["group_id"]?.toString() ??
+      _groupData["id"]?.toString() ??
+      widget.group?["group_id"]?.toString() ??
+      widget.group?["id"]?.toString() ??
+      "";
+
+  String get _inviteCode =>
+      _groupData["invitation_code"]?.toString() ??
+      _groupData["invite_code"]?.toString() ??
+      _groupData["invitationCode"]?.toString() ??
+      _groupData["code"]?.toString() ??
+      widget.group?["invitation_code"]?.toString() ??
+      widget.group?["invite_code"]?.toString() ??
+      widget.group?["invitationCode"]?.toString() ??
+      widget.group?["code"]?.toString() ??
+      "";
+
+  String get _groupTitle =>
+      _groupData["group_name"]?.toString() ??
+      _groupData["title"]?.toString() ??
+      widget.group?["group_name"]?.toString() ??
+      widget.group?["title"]?.toString() ??
+      "Equb Circle";
+
+  dynamic get _amountVal =>
+      _groupData["contribution_amount"] ??
+      _groupData["amount"] ??
+      widget.group?["contribution_amount"] ??
+      widget.group?["amount"] ??
+      0;
+
+  String get _groupStatus =>
+      (_groupData["status"] ?? widget.group?["status"] ?? "ACTIVE").toString().toUpperCase();
+
+  int get _maxMembers {
+    final val = _groupData["max_members"] ?? widget.group?["max_members"] ?? 0;
+    return val is int ? val : int.tryParse('$val') ?? 0;
+  }
 
   Future<void> _loadDetails() async {
     if (_groupId.isEmpty) {
@@ -58,15 +98,23 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
 
     try {
       final futures = await Future.wait([
+        _groupService.getGroupById(_groupId).catchError((_) => <String, dynamic>{}),
         _groupService.getGroupMembers(_groupId).catchError((_) => <String, dynamic>{}),
         _reportsService.getGroupSummary(_groupId).catchError((_) => <String, dynamic>{}),
       ]);
 
-      final membersRes = futures[0];
-      final summaryRes = futures[1];
+      final groupRes = futures[0];
+      final membersRes = futures[1];
+      final summaryRes = futures[2];
 
       if (mounted) {
         setState(() {
+          if (groupRes["data"] != null && groupRes["data"] is Map) {
+            _groupData = {
+              ..._groupData,
+              ...Map<String, dynamic>.from(groupRes["data"]),
+            };
+          }
           if (membersRes["data"] != null && membersRes["data"] is List) {
             _members = List<Map<String, dynamic>>.from(membersRes["data"]);
           } else {
@@ -226,10 +274,10 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
-    final groupTitle = widget.group?["group_name"] ?? widget.group?["title"] ?? "Equb Circle";
-    final amountVal = widget.group?["contribution_amount"] ?? widget.group?["amount"] ?? 0;
+    final groupTitle = _groupTitle;
+    final amountVal = _amountVal;
     final groupAmount = "ETB $amountVal / Cycle";
-    final inviteCode = widget.group?["invitation_code"] ?? "";
+    final inviteCode = _inviteCode;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -285,7 +333,7 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                 // Top Group Overview Card
                 _buildGroupOverviewCard(groupTitle, groupAmount, inviteCode),
 
-                // Custom Tab Bar (Members | Contributions | Loans)
+                // Custom Tab Bar (Members | Contributions | Activity)
                 _buildTabBar(),
 
                 // Tab Bar Views
@@ -309,7 +357,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
 
   /// Top Group Overview Card
   Widget _buildGroupOverviewCard(String title, String amount, String inviteCode) {
-    final status = (widget.group?["status"] ?? "ACTIVE").toString().toUpperCase();
+    final status = _groupStatus;
+    final isPending = status == "PENDING";
 
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 16, 20, 12),
@@ -369,19 +418,36 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                         fontFamily: 'Poppins',
                       ),
                     ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(Icons.people_outline_rounded, size: 14, color: textMuted),
+                        const SizedBox(width: 4),
+                        Text(
+                          "${_members.isNotEmpty ? _members.length : (_groupData["current_members"] ?? _groupData["member_count"] ?? 1)} / ${_maxMembers > 0 ? _maxMembers : 10} Members",
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: textMuted,
+                            fontWeight: FontWeight.w500,
+                            fontFamily: 'Poppins',
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: activeGreenBg,
+                  color: isPending ? const Color(0xFFFFF7ED) : activeGreenBg,
                   borderRadius: BorderRadius.circular(8),
+                  border: isPending ? Border.all(color: primaryOrange.withValues(alpha: 0.3)) : null,
                 ),
                 child: Text(
                   status,
-                  style: const TextStyle(
-                    color: activeGreen,
+                  style: TextStyle(
+                    color: isPending ? primaryOrange : activeGreen,
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                     fontFamily: 'Poppins',
@@ -391,35 +457,92 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
             ],
           ),
           if (inviteCode.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                color: const Color(0xFFFFF7ED),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: primaryOrange.withValues(alpha: 0.3)),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.vpn_key_rounded, size: 16, color: primaryOrange),
-                      const SizedBox(width: 8),
-                      Text(
-                        "Code: $inviteCode",
-                        style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w700, fontSize: 13, color: textDark),
-                      ),
-                    ],
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: primaryOrange.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.vpn_key_rounded,
+                      size: 18,
+                      color: primaryOrange,
+                    ),
                   ),
-                  GestureDetector(
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "INVITATION CODE",
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: primaryOrange,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        SelectableText(
+                          inviteCode,
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                            letterSpacing: 2.0,
+                            color: textDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  InkWell(
                     onTap: () {
                       Clipboard.setData(ClipboardData(text: inviteCode));
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Code copied!"), duration: Duration(seconds: 1)),
+                        SnackBar(
+                          content: Text("Invitation code '$inviteCode' copied!"),
+                          backgroundColor: const Color(0xFF16A34A),
+                          duration: const Duration(seconds: 2),
+                        ),
                       );
                     },
-                    child: const Text("Copy", style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 12, color: primaryOrange)),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: primaryOrange,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.copy_rounded, size: 14, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text(
+                            "Copy",
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -430,7 +553,7 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
     );
   }
 
-  /// TabBar (Members | Contributions | Loans)
+  /// TabBar (Members | Contributions | Activity)
   Widget _buildTabBar() {
     return Container(
       decoration: const BoxDecoration(
@@ -471,19 +594,123 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
   /// Members Tab View
   Widget _buildMembersTab() {
     if (_members.isEmpty) {
-      return const Center(
-        child: Text(
-          "No members joined yet",
-          style: TextStyle(fontFamily: 'Poppins', color: textMuted),
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.group_off_rounded, size: 48, color: textMuted),
+              const SizedBox(height: 12),
+              const Text(
+                "No members joined yet",
+                style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16, color: textDark),
+              ),
+              if (_inviteCode.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  "Share code '$_inviteCode' to invite members.",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontFamily: 'Poppins', color: textMuted, fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: _inviteCode));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("Invitation code '$_inviteCode' copied!"),
+                        backgroundColor: const Color(0xFF16A34A),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.copy_rounded, size: 16),
+                  label: const Text("Copy Invitation Code"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryOrange,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       );
     }
 
+    final hasInviteHeader = _inviteCode.isNotEmpty;
+
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      itemCount: _members.length,
+      itemCount: _members.length + (hasInviteHeader ? 1 : 0),
       separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (context, i) {
+      itemBuilder: (context, index) {
+        if (hasInviteHeader && index == 0) {
+          final slotInfo = _maxMembers > 0
+              ? "${_members.length}/$_maxMembers slots filled"
+              : "${_members.length} members";
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.person_add_alt_1_rounded, color: primaryOrange, size: 22),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Invite Members",
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: textDark,
+                        ),
+                      ),
+                      Text(
+                        "Code: $_inviteCode • $slotInfo",
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 11.5,
+                          color: textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: _inviteCode));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("Invitation code '$_inviteCode' copied!"),
+                        backgroundColor: const Color(0xFF16A34A),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    "Copy",
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w700,
+                      color: primaryOrange,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final i = hasInviteHeader ? index - 1 : index;
         final m = _members[i];
         final name = m["full_name"] ?? m["name"] ?? "Member ${i + 1}";
         final role = (m["role"] ?? "member").toString().toUpperCase();
@@ -650,8 +877,104 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
     );
   }
 
-  /// Fixed Bottom Action Button: "Make Contribution"
+  bool _isStarting = false;
+
+  Future<void> _handleStartGroup() async {
+    final memberCount = _members.length;
+    if (memberCount < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("At least 2 members are required to start the group."),
+          backgroundColor: Color(0xFFEA580C),
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.play_circle_fill_rounded, color: primaryOrange),
+            SizedBox(width: 8),
+            Text(
+              "Start Equb Circle",
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          "Starting this group will begin Cycle #1 for all $memberCount members and generate initial contribution schedules.\n\nAre you sure you want to start now?",
+          style: const TextStyle(fontFamily: 'Poppins', fontSize: 13.5, color: textDark),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              "Cancel",
+              style: TextStyle(fontFamily: 'Poppins', color: textMuted, fontWeight: FontWeight.w600),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryOrange,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text(
+              "Start Group",
+              style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isStarting = true);
+
+    try {
+      final res = await _groupService.startGroup(_groupId);
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(res["message"] ?? "Group started successfully! Cycle 1 has begun."),
+          backgroundColor: const Color(0xFF16A34A),
+        ),
+      );
+
+      await _loadDetails();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll("Exception: ", "")),
+          backgroundColor: const Color(0xFFDC2626),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isStarting = false);
+    }
+  }
+
+  /// Fixed Bottom Action Button: "Start Group" or "Make Contribution"
   Widget _buildBottomAction(String groupTitle, dynamic amount) {
+    final isPending = _groupStatus == "PENDING";
+    final isCompleted = _groupStatus == "COMPLETED";
+
+    if (isCompleted) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       decoration: const BoxDecoration(
@@ -668,8 +991,34 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
         child: SizedBox(
           width: double.infinity,
           height: 52,
-          child: ElevatedButton(
-            onPressed: () => _showContributionModal(context, groupTitle, amount),
+          child: ElevatedButton.icon(
+            onPressed: _isStarting
+                ? null
+                : (isPending
+                    ? _handleStartGroup
+                    : () => _showContributionModal(context, groupTitle, amount)),
+            icon: _isStarting
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                : Icon(
+                    isPending ? Icons.play_arrow_rounded : Icons.payments_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+            label: Text(
+              isPending
+                  ? (_isStarting ? "Starting Group..." : "Start Equb Group")
+                  : "Make Contribution",
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
+                fontFamily: 'Poppins',
+              ),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryOrange,
               foregroundColor: Colors.white,
@@ -678,18 +1027,10 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
               ),
               elevation: 0,
             ),
-            child: const Text(
-              "Make Contribution",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.2,
-                fontFamily: 'Poppins',
-              ),
-            ),
           ),
         ),
       ),
     );
   }
 }
+
