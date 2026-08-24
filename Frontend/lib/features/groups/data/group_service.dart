@@ -66,12 +66,15 @@ class GroupService {
   Future<Map<String, dynamic>> joinGroup(String inviteCodeOrId) async {
     final token = await _getToken();
 
-    final isUuid = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(inviteCodeOrId);
+    final isUuid = RegExp(
+            r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+        .hasMatch(inviteCodeOrId);
     final url = isUuid
         ? "$baseUrl/groups/$inviteCodeOrId/join"
         : "$baseUrl/groups/join";
 
-    final body = isUuid ? null : jsonEncode({"invitation_code": inviteCodeOrId.trim()});
+    final body =
+        isUuid ? null : jsonEncode({"invitation_code": inviteCodeOrId.trim()});
 
     final response = await http.post(
       Uri.parse(url),
@@ -111,6 +114,20 @@ class GroupService {
       },
     );
     return jsonDecode(response.body);
+  }
+
+  Future<Map<String, dynamic>> getGroupActivity(String groupId) async {
+    final token = await _getToken();
+
+    final response = await http.get(
+      Uri.parse("$baseUrl/groups/$groupId/activity"),
+      headers: {"Authorization": "Bearer $token"},
+    );
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    }
+    throw Exception(data['message'] ?? 'Failed to load group activity');
   }
 
   Future<Map<String, dynamic>> startGroup(String groupId) async {

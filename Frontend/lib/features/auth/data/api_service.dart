@@ -13,12 +13,10 @@ class ApiService {
     await _storage.write(key: 'access_token', value: token);
   }
 
-
-static Future<void> saveRefreshToken(String refreshToken) async {
+  static Future<void> saveRefreshToken(String refreshToken) async {
     await _storage.write(key: 'refresh_token', value: refreshToken);
   }
 
-  
   static Future<Map<String, dynamic>> login(
       String phone, String password) async {
     try {
@@ -48,6 +46,7 @@ static Future<void> saveRefreshToken(String refreshToken) async {
       );
     }
   }
+
   static Future<Map<String, dynamic>> getUserData() async {
     final token = await _storage.read(key: 'access_token');
     final response = await http.get(
@@ -59,130 +58,138 @@ static Future<void> saveRefreshToken(String refreshToken) async {
     return jsonDecode(response.body);
   }
 
-static Future<Map<String, dynamic>> register({
-  required String phone,
-}) async {
-  final response = await http.post(
-    Uri.parse("$baseUrl/register"),
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: jsonEncode({
-      "phone_number": phone,
-    }),
-  );
-  final data = jsonDecode(response.body);
-  if (response.statusCode == 200) {
-    return data;
-  } else {
-    throw Exception(data["message"]);
-  }
-}
-
-static Future<Map<String, dynamic>> verifyRegistrationOTP({
-  required String phone,
-  required String otp,
-  required String password,
-  required String fullName,
-}) async {
-  final response = await http.post(
-    Uri.parse("$baseUrl/verify-otp"),
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: jsonEncode({
-      "phone_number": phone,
-      "otp_code": otp,
-      "password": password,
-      "full_name": fullName,
-    }),
-  );
-
-  final data = jsonDecode(response.body);
-
-  if (response.statusCode >= 200 && response.statusCode < 300) {
-   await saveToken(data['data']['token']);
-    await saveRefreshToken(data['data']['refreshToken']);
-   return data;
-  } else {
-    throw Exception(data["message"] ?? "OTP verification failed");
-  }
-}
-
-static Future<Map<String, dynamic>> resendRegistrationOTP({
-  required String phone,
-}) async {
-  final response = await http.post(
-    Uri.parse("$baseUrl/resend-otp"),
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: jsonEncode({
-      "phone_number": phone,
-    }),
-  );
-
-  final data = jsonDecode(response.body);
-
-  if (response.statusCode >= 200 && response.statusCode < 300) {
-    return data;
-  } else {
-    throw Exception(
-      data["message"] ?? "Failed to resend OTP",
+  static Future<Map<String, dynamic>> register({
+    required String phone,
+  }) async {
+    final response = await http.post(
+      Uri.parse("$baseUrl/register"),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode({
+        "phone_number": phone,
+      }),
     );
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    } else {
+      throw Exception(data["message"] ?? "Registration failed");
+    }
   }
-}
 
-static Future<Map<String, dynamic>> requestPasswordReset({
-  required String phone,
-}) async {
-  final response = await http.post(
-    Uri.parse("$baseUrl/forgot-password"),
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: jsonEncode({
-      "phone_number": phone,
-    }),
-  );
-
-  final data = jsonDecode(response.body);
-
-  if (response.statusCode >= 200 &&
-      response.statusCode < 300) {
-    return data;
-  } else {
-    throw Exception(
-      data["message"] ?? "Failed to send reset OTP",
+  static Future<Map<String, dynamic>> verifyRegistrationOTP({
+    required String phone,
+    required String otp,
+    required String password,
+    required String fullName,
+  }) async {
+    final response = await http.post(
+      Uri.parse("$baseUrl/verify-otp"),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode({
+        "phone_number": phone,
+        "otp_code": otp,
+        "password": password,
+        "full_name": fullName,
+      }),
     );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final responseData = data['data'] as Map<String, dynamic>?;
+      final accessToken =
+          responseData?['accessToken'] ?? responseData?['token'];
+      final refreshToken = responseData?['refreshToken'];
+
+      if (accessToken is String && accessToken.isNotEmpty) {
+        await saveToken(accessToken);
+      }
+      if (refreshToken is String && refreshToken.isNotEmpty) {
+        await saveRefreshToken(refreshToken);
+      }
+      return data;
+    } else {
+      throw Exception(data["message"] ?? "OTP verification failed");
+    }
   }
-}
-static Future<Map<String, dynamic>> resetPassword({
-  required String phone,
-  required String otp,
-  required String newPassword,
-}) async {
-  final response = await http.post(
-    Uri.parse("$baseUrl/reset-password"),
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: jsonEncode({
-      "phone_number": phone,
-      "otp_code": otp,
-      "new_password": newPassword,
-    }),
-  );
 
-  final data = jsonDecode(response.body);
-
-  if (response.statusCode >= 200 &&
-      response.statusCode < 300) {
-    return data;
-  } else {
-    throw Exception(
-      data["message"] ?? "Password reset failed",
+  static Future<Map<String, dynamic>> resendRegistrationOTP({
+    required String phone,
+  }) async {
+    final response = await http.post(
+      Uri.parse("$baseUrl/resend-otp"),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode({
+        "phone_number": phone,
+      }),
     );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    } else {
+      throw Exception(
+        data["message"] ?? "Failed to resend OTP",
+      );
+    }
   }
-}
+
+  static Future<Map<String, dynamic>> requestPasswordReset({
+    required String phone,
+  }) async {
+    final response = await http.post(
+      Uri.parse("$baseUrl/forgot-password"),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode({
+        "phone_number": phone,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    } else {
+      throw Exception(
+        data["message"] ?? "Failed to send reset OTP",
+      );
+    }
+  }
+
+  static Future<Map<String, dynamic>> resetPassword({
+    required String phone,
+    required String otp,
+    required String newPassword,
+  }) async {
+    final response = await http.post(
+      Uri.parse("$baseUrl/reset-password"),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode({
+        "phone_number": phone,
+        "otp_code": otp,
+        "new_password": newPassword,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    } else {
+      throw Exception(
+        data["message"] ?? "Password reset failed",
+      );
+    }
+  }
 }

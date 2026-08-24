@@ -41,7 +41,8 @@ class ActiveGroupDashboard extends StatelessWidget {
     }
   }
 
-  void _showPayModal(BuildContext context, {required Map<String, dynamic> contribution}) {
+  void _showPayModal(BuildContext context,
+      {required Map<String, dynamic> contribution}) {
     final amount = contribution['amount'] ?? 0;
     final groupName = contribution['group_name'] ?? 'Equb Circle';
     final contributionId = contribution['contribution_id'];
@@ -100,7 +101,8 @@ class ActiveGroupDashboard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFF7ED),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: primaryOrange.withValues(alpha: 0.2)),
+                  border:
+                      Border.all(color: primaryOrange.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -129,7 +131,8 @@ class ActiveGroupDashboard extends StatelessWidget {
                       ],
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(10),
@@ -157,12 +160,16 @@ class ActiveGroupDashboard extends StatelessWidget {
                       : () async {
                           setModalState(() => isPaying = true);
                           try {
-                            final gId = contribution['group_id'] ?? contribution['id'];
+                            final gId =
+                                contribution['group_id'] ?? contribution['id'];
                             final cycle = contribution['cycle_number'] ?? 1;
-                            final cycleNum = cycle is int ? cycle : int.tryParse('$cycle') ?? 1;
+                            final cycleNum = cycle is int
+                                ? cycle
+                                : int.tryParse('$cycle') ?? 1;
 
                             if (gId != null && gId.toString().isNotEmpty) {
-                              await ContributionsService().pay(gId.toString(), cycleNum);
+                              await ContributionsService()
+                                  .pay(gId.toString(), cycleNum);
                             } else {
                               Navigator.pop(ctx);
                               Navigator.pushNamed(context, '/contributions');
@@ -175,7 +182,8 @@ class ActiveGroupDashboard extends StatelessWidget {
 
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text("Contribution of ETB $amount paid successfully!"),
+                                content: Text(
+                                    "Contribution of ETB $amount paid successfully!"),
                                 backgroundColor: const Color(0xFF16A34A),
                               ),
                             );
@@ -183,7 +191,8 @@ class ActiveGroupDashboard extends StatelessWidget {
                             setModalState(() => isPaying = false);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text(e.toString().replaceAll("Exception: ", "")),
+                                content: Text(
+                                    e.toString().replaceAll("Exception: ", "")),
                                 backgroundColor: const Color(0xFFDC2626),
                               ),
                             );
@@ -201,11 +210,15 @@ class ActiveGroupDashboard extends StatelessWidget {
                       ? const SizedBox(
                           width: 22,
                           height: 22,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2),
                         )
                       : const Text(
                           "Confirm & Pay from Wallet",
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'Poppins'),
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'Poppins'),
                         ),
                 ),
               ),
@@ -221,15 +234,29 @@ class ActiveGroupDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     final String userName = userProfile?["full_name"] ?? "Equb Member";
 
-    final balanceVal = dashboardData?['wallet_balance'] ?? userProfile?['wallet_balance'] ?? summaryData?['wallet_balance'] ?? 0;
-    final double balance = (balanceVal is num ? balanceVal.toDouble() : double.tryParse('$balanceVal') ?? 0.0);
+    final balanceVal = dashboardData?['wallet_balance'] ??
+        userProfile?['wallet_balance'] ??
+        summaryData?['wallet_balance'] ??
+        0;
+    final double balance = (balanceVal is num
+        ? balanceVal.toDouble()
+        : double.tryParse('$balanceVal') ?? 0.0);
 
-    final totalContributedVal = summaryData?['total_contributed'] ?? summaryData?['data']?['total_contributed'] ?? 0;
-    final double totalContributed = (totalContributedVal is num ? totalContributedVal.toDouble() : double.tryParse('$totalContributedVal') ?? 0.0);
+    final totalContributedVal = summaryData?['total_contributed'] ??
+        summaryData?['data']?['total_contributed'] ??
+        0;
+    final double totalContributed = (totalContributedVal is num
+        ? totalContributedVal.toDouble()
+        : double.tryParse('$totalContributedVal') ?? 0.0);
 
     // Backend key is total_payouts_received (not total_received)
-    final totalReceivedVal = summaryData?['total_payouts_received'] ?? summaryData?['data']?['total_payouts_received'] ?? summaryData?['total_received'] ?? 0;
-    final double totalReceived = (totalReceivedVal is num ? totalReceivedVal.toDouble() : double.tryParse('$totalReceivedVal') ?? 0.0);
+    final totalReceivedVal = summaryData?['total_payouts_received'] ??
+        summaryData?['data']?['total_payouts_received'] ??
+        summaryData?['total_received'] ??
+        0;
+    final double totalReceived = (totalReceivedVal is num
+        ? totalReceivedVal.toDouble()
+        : double.tryParse('$totalReceivedVal') ?? 0.0);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -249,7 +276,8 @@ class ActiveGroupDashboard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Top Header & Wallet Balance Card
-                _buildHeaderCard(context, userName, balance, totalContributed, totalReceived),
+                _buildHeaderCard(context, userName, balance, totalContributed,
+                    totalReceived),
 
                 const SizedBox(height: 22),
 
@@ -276,7 +304,8 @@ class ActiveGroupDashboard extends StatelessWidget {
   }
 
   /// Top Curved Gradient Header & Balance Summary
-  Widget _buildHeaderCard(BuildContext context, String userName, double balance, double totalSavings, double payouts) {
+  Widget _buildHeaderCard(BuildContext context, String userName, double balance,
+      double totalSavings, double payouts) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -300,7 +329,8 @@ class ActiveGroupDashboard extends StatelessWidget {
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.only(left: 20, right: 20, top: 12, bottom: 26),
+          padding:
+              const EdgeInsets.only(left: 20, right: 20, top: 12, bottom: 26),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -367,7 +397,8 @@ class ActiveGroupDashboard extends StatelessWidget {
                         color: Colors.white,
                         size: 22,
                       ),
-                      onPressed: () => Navigator.pushNamed(context, '/notifications'),
+                      onPressed: () =>
+                          Navigator.pushNamed(context, '/notifications'),
                     ),
                   ),
                 ],
@@ -404,7 +435,8 @@ class ActiveGroupDashboard extends StatelessWidget {
                   GestureDetector(
                     onTap: () => Navigator.pushNamed(context, '/wallet/top-up'),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
@@ -412,7 +444,8 @@ class ActiveGroupDashboard extends StatelessWidget {
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.add_rounded, color: primaryOrange, size: 16),
+                          Icon(Icons.add_rounded,
+                              color: primaryOrange, size: 16),
                           SizedBox(width: 4),
                           Text(
                             "Top Up",
@@ -525,7 +558,8 @@ class ActiveGroupDashboard extends StatelessWidget {
             label: "Pay\nContribution",
             onTap: () {
               if (pendingContributions.isNotEmpty) {
-                _showPayModal(context, contribution: pendingContributions.first);
+                _showPayModal(context,
+                    contribution: pendingContributions.first);
               } else {
                 Navigator.pushNamed(context, '/contributions');
               }
@@ -607,7 +641,8 @@ class ActiveGroupDashboard extends StatelessWidget {
                 ),
               ),
               GestureDetector(
-                onTap: onSeeAll ?? () => Navigator.pushNamed(context, '/groups'),
+                onTap:
+                    onSeeAll ?? () => Navigator.pushNamed(context, '/groups'),
                 child: const Text(
                   "See All >",
                   style: TextStyle(
@@ -642,12 +677,17 @@ class ActiveGroupDashboard extends StatelessWidget {
                   const SizedBox(height: 8),
                   const Text(
                     "You haven't joined any groups yet",
-                    style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 14, color: textDark),
+                    style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: textDark),
                   ),
                   const SizedBox(height: 4),
                   const Text(
                     "Create or join an Equb circle to start saving.",
-                    style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: textMuted),
+                    style: TextStyle(
+                        fontFamily: 'Poppins', fontSize: 12, color: textMuted),
                   ),
                 ],
               ),
@@ -665,9 +705,14 @@ class ActiveGroupDashboard extends StatelessWidget {
                 final group = groups[i];
                 final title = group["group_name"] ?? "Equb Circle";
                 final amount = group["contribution_amount"] ?? 0;
-                final maxMembers = group["max_members"] ?? 10;
+                final actualMemberCount = group["actual_member_count"] ??
+                    group["member_count"] ??
+                    group["max_members"] ??
+                    0;
                 final cycle = group["current_cycle"] ?? 1;
-                final status = (group["status"] ?? "active").toString().toUpperCase();
+                final cycleTotal = group["total_cycles"] ?? actualMemberCount;
+                final status =
+                    (group["status"] ?? "active").toString().toUpperCase();
 
                 return _buildGroupCard(
                   context: context,
@@ -677,8 +722,8 @@ class ActiveGroupDashboard extends StatelessWidget {
                   iconBgColor: const Color(0xFFEFF6FF),
                   iconColor: const Color(0xFF2563EB),
                   badgeText: status,
-                  payoutText: "Cycle $cycle",
-                  memberCountText: "$maxMembers",
+                  payoutText: "Cycle $cycle/$cycleTotal",
+                  memberCountText: "$actualMemberCount",
                   groupData: group,
                 );
               },
@@ -744,7 +789,8 @@ class ActiveGroupDashboard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFFDCFCE7),
                     borderRadius: BorderRadius.circular(8),
@@ -803,7 +849,8 @@ class ActiveGroupDashboard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.people_outline_rounded, size: 16, color: textMuted),
+                    const Icon(Icons.people_outline_rounded,
+                        size: 16, color: textMuted),
                     const SizedBox(width: 4),
                     Text(
                       "$memberCountText Members",
@@ -872,7 +919,6 @@ class ActiveGroupDashboard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-
           if (items.isEmpty)
             Container(
               width: double.infinity,
@@ -884,12 +930,16 @@ class ActiveGroupDashboard extends StatelessWidget {
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.check_circle_outline_rounded, color: Color(0xFF16A34A), size: 24),
+                  Icon(Icons.check_circle_outline_rounded,
+                      color: Color(0xFF16A34A), size: 24),
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       "All caught up! No pending contributions due right now.",
-                      style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: textMuted),
+                      style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 13,
+                          color: textMuted),
                     ),
                   ),
                 ],
@@ -973,9 +1023,11 @@ class ActiveGroupDashboard extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
                         GestureDetector(
-                          onTap: () => _showPayModal(context, contribution: item),
+                          onTap: () =>
+                              _showPayModal(context, contribution: item),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 5),
                             decoration: BoxDecoration(
                               color: primaryOrange,
                               borderRadius: BorderRadius.circular(12),

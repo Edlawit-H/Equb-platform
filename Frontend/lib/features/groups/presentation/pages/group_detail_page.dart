@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/group_service.dart';
 import '../../../contributions/data/contributions_service.dart';
+import '../../../payouts/data/payouts_service.dart';
 import '../../../reports/data/reports_service.dart';
 
 class GroupDetailsPage extends StatefulWidget {
@@ -16,14 +17,20 @@ class GroupDetailsPage extends StatefulWidget {
   State<GroupDetailsPage> createState() => _GroupDetailsPageState();
 }
 
-class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerProviderStateMixin {
+class _GroupDetailsPageState extends State<GroupDetailsPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _groupService = GroupService();
   final _reportsService = ReportsService();
   final _contributionsService = ContributionsService();
+  final _payoutsService = PayoutsService();
 
   List<Map<String, dynamic>> _members = [];
+  List<Map<String, dynamic>> _activity = [];
+  List<Map<String, dynamic>> _contributions = [];
+  List<Map<String, dynamic>> _payouts = [];
   Map<String, dynamic> _groupSummary = {};
+  Map<String, dynamic> _groupDetails = {};
   bool _isLoading = true;
 
   static const Color headerColor = Color(0xFFEA580C);
@@ -58,21 +65,57 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
 
     try {
       final futures = await Future.wait([
-        _groupService.getGroupMembers(_groupId).catchError((_) => <String, dynamic>{}),
-        _reportsService.getGroupSummary(_groupId).catchError((_) => <String, dynamic>{}),
+        _groupService
+            .getGroupById(_groupId)
+            .catchError((_) => <String, dynamic>{}),
+        _groupService
+            .getGroupMembers(_groupId)
+            .catchError((_) => <String, dynamic>{}),
+        _reportsService
+            .getGroupSummary(_groupId)
+            .catchError((_) => <String, dynamic>{}),
+        _contributionsService
+            .getGroupContributions(_groupId)
+            .catchError((_) => <String, dynamic>{}),
+        _payoutsService
+            .getGroupPayouts(_groupId)
+            .catchError((_) => <String, dynamic>{}),
       ]);
 
-      final membersRes = futures[0];
-      final summaryRes = futures[1];
+      final groupRes = futures[0];
+      final membersRes = futures[1];
+      final summaryRes = futures[2];
+      final contributionsRes = futures[3];
+      final payoutsRes = futures[4];
 
       if (mounted) {
         setState(() {
+          if (groupRes["data"] is Map) {
+            _groupDetails = Map<String, dynamic>.from(groupRes["data"]);
+          }
           if (membersRes["data"] != null && membersRes["data"] is List) {
             _members = List<Map<String, dynamic>>.from(membersRes["data"]);
           } else {
             _members = [];
           }
           _groupSummary = summaryRes;
+          final contributions = contributionsRes["contributions"] is List
+              ? List<Map<String, dynamic>>.from(
+                  contributionsRes["contributions"])
+              : <Map<String, dynamic>>[];
+          final payouts = payoutsRes["payouts"] is List
+              ? List<Map<String, dynamic>>.from(payoutsRes["payouts"])
+              : <Map<String, dynamic>>[];
+          _contributions = contributions;
+          _payouts = payouts;
+          _activity = [
+            ...contributions
+                .where((item) => item["status"] == "paid")
+                .map((item) => {...item, "activity_type": "contribution"}),
+            ...payouts
+                .where((item) => item["status"] == "completed")
+                .map((item) => {...item, "activity_type": "payout"}),
+          ]..sort((a, b) => _activityDate(b).compareTo(_activityDate(a)));
           _isLoading = false;
         });
       }
@@ -82,8 +125,17 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
     }
   }
 
-  void _showContributionModal(BuildContext context, String groupName, dynamic amount) {
-    final numAmount = amount is num ? amount.toDouble() : double.tryParse('$amount') ?? 0.0;
+  DateTime _activityDate(Map<String, dynamic> item) {
+    final value =
+        item["paid_date"] ?? item["payout_date"] ?? item["created_at"];
+    return DateTime.tryParse(value?.toString() ?? "") ??
+        DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  void _showContributionModal(
+      BuildContext context, String groupName, dynamic amount) {
+    final numAmount =
+        amount is num ? amount.toDouble() : double.tryParse('$amount') ?? 0.0;
     bool isPaying = false;
 
     showModalBottomSheet(
@@ -137,11 +189,13 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFF7ED),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: primaryOrange.withValues(alpha: 0.2)),
+                  border:
+                      Border.all(color: primaryOrange.withValues(alpha: 0.2)),
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.account_balance_wallet_rounded, color: primaryOrange),
+                    Icon(Icons.account_balance_wallet_rounded,
+                        color: primaryOrange),
                     SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -149,11 +203,17 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                         children: [
                           Text(
                             "Payment Method",
-                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, fontFamily: 'Poppins'),
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                fontFamily: 'Poppins'),
                           ),
                           Text(
                             "Equb Digital Wallet Balance",
-                            style: TextStyle(color: textMuted, fontSize: 12, fontFamily: 'Poppins'),
+                            style: TextStyle(
+                                color: textMuted,
+                                fontSize: 12,
+                                fontFamily: 'Poppins'),
                           ),
                         ],
                       ),
@@ -172,9 +232,37 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                       : () async {
                           setModalState(() => isPaying = true);
                           try {
-                            final cycle = widget.group?["current_cycle"] ?? 1;
-                            final cycleNum = cycle is int ? cycle : int.tryParse('$cycle') ?? 1;
-                            await _contributionsService.pay(_groupId, cycleNum);
+                            final currentCycle =
+                                _groupDetails["current_cycle"] ??
+                                    (_groupSummary["group"] is Map
+                                        ? _groupSummary["group"]
+                                            ["current_cycle"]
+                                        : null) ??
+                                    widget.group?["current_cycle"];
+                            final cycleNum = currentCycle is int
+                                ? currentCycle
+                                : int.tryParse('$currentCycle');
+                            final payable = _contributions.where((item) {
+                              final status = item["status"]?.toString();
+                              final itemCycle = int.tryParse(
+                                  item["cycle_number"]?.toString() ?? "");
+                              return (status == "pending" ||
+                                      status == "overdue") &&
+                                  (cycleNum == null || itemCycle == cycleNum);
+                            }).toList();
+                            if (payable.isEmpty) {
+                              throw Exception(
+                                  "There is no unpaid contribution for the current cycle");
+                            }
+                            final contribution = payable.first;
+                            final contributionCycle = int.tryParse(
+                                contribution["cycle_number"]?.toString() ?? "");
+                            if (contributionCycle == null) {
+                              throw Exception(
+                                  "Contribution cycle is unavailable");
+                            }
+                            await _contributionsService.pay(
+                                _groupId, contributionCycle);
 
                             if (!context.mounted) return;
                             Navigator.pop(ctx);
@@ -182,7 +270,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
 
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text("Contribution of ETB ${numAmount.toStringAsFixed(2)} completed!"),
+                                content: Text(
+                                    "Contribution of ETB ${numAmount.toStringAsFixed(2)} completed!"),
                                 backgroundColor: const Color(0xFF16A34A),
                               ),
                             );
@@ -190,7 +279,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                             setModalState(() => isPaying = false);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text(e.toString().replaceAll("Exception: ", "")),
+                                content: Text(
+                                    e.toString().replaceAll("Exception: ", "")),
                                 backgroundColor: const Color(0xFFDC2626),
                               ),
                             );
@@ -208,11 +298,15 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                       ? const SizedBox(
                           width: 22,
                           height: 22,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2),
                         )
                       : const Text(
                           "Confirm & Pay",
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, fontFamily: 'Poppins'),
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'Poppins'),
                         ),
                 ),
               ),
@@ -226,10 +320,11 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
-    final groupTitle = widget.group?["group_name"] ?? widget.group?["title"] ?? "Equb Circle";
-    final amountVal = widget.group?["contribution_amount"] ?? widget.group?["amount"] ?? 0;
+    final group = {...?widget.group, ..._groupDetails};
+    final groupTitle = group["group_name"] ?? group["title"] ?? "Equb Circle";
+    final amountVal = group["contribution_amount"] ?? group["amount"] ?? 0;
     final groupAmount = "ETB $amountVal / Cycle";
-    final inviteCode = widget.group?["invitation_code"] ?? "";
+    final inviteCode = group["invitation_code"] ?? "";
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -263,13 +358,15 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
           actions: [
             if (inviteCode.isNotEmpty)
               IconButton(
-                icon: const Icon(Icons.share_rounded, color: Colors.white, size: 20),
+                icon: const Icon(Icons.share_rounded,
+                    color: Colors.white, size: 20),
                 tooltip: "Invitation Code: $inviteCode",
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: inviteCode));
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text("Invitation code '$inviteCode' copied to clipboard!"),
+                      content: Text(
+                          "Invitation code '$inviteCode' copied to clipboard!"),
                       backgroundColor: primaryOrange,
                     ),
                   );
@@ -308,8 +405,17 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
   }
 
   /// Top Group Overview Card
-  Widget _buildGroupOverviewCard(String title, String amount, String inviteCode) {
-    final status = (widget.group?["status"] ?? "ACTIVE").toString().toUpperCase();
+  Widget _buildGroupOverviewCard(
+      String title, String amount, String inviteCode) {
+    final summaryGroup = _groupSummary["group"] is Map
+        ? Map<String, dynamic>.from(_groupSummary["group"])
+        : <String, dynamic>{};
+    final status = (summaryGroup["status"] ??
+            _groupDetails["status"] ??
+            widget.group?["status"] ??
+            "ACTIVE")
+        .toString()
+        .toUpperCase();
 
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 16, 20, 12),
@@ -373,7 +479,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: activeGreenBg,
                   borderRadius: BorderRadius.circular(8),
@@ -404,11 +511,16 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.vpn_key_rounded, size: 16, color: primaryOrange),
+                      const Icon(Icons.vpn_key_rounded,
+                          size: 16, color: primaryOrange),
                       const SizedBox(width: 8),
                       Text(
                         "Code: $inviteCode",
-                        style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w700, fontSize: 13, color: textDark),
+                        style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: textDark),
                       ),
                     ],
                   ),
@@ -416,10 +528,17 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                     onTap: () {
                       Clipboard.setData(ClipboardData(text: inviteCode));
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Code copied!"), duration: Duration(seconds: 1)),
+                        const SnackBar(
+                            content: Text("Code copied!"),
+                            duration: Duration(seconds: 1)),
                       );
                     },
-                    child: const Text("Copy", style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 12, color: primaryOrange)),
+                    child: const Text("Copy",
+                        style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: primaryOrange)),
                   ),
                 ],
               ),
@@ -487,7 +606,22 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
         final m = _members[i];
         final name = m["full_name"] ?? m["name"] ?? "Member ${i + 1}";
         final role = (m["role"] ?? "member").toString().toUpperCase();
-        final isPaid = m["has_paid"] == true || m["status"] == "paid";
+        final memberId = m["member_id"]?.toString();
+        final currentCycle = _groupDetails["current_cycle"] ??
+            (_groupSummary["group"] is Map
+                ? _groupSummary["group"]["current_cycle"]
+                : null) ??
+            widget.group?["current_cycle"];
+        final isPaid = m["has_paid"] == true ||
+            _contributions.any((contribution) =>
+                contribution["member_id"]?.toString() == memberId &&
+                contribution["status"] == "paid" &&
+                (currentCycle == null ||
+                    contribution["cycle_number"].toString() ==
+                        currentCycle.toString()));
+        final hasReceivedPayout = _payouts.any((payout) =>
+            payout["member_id"]?.toString() == memberId &&
+            payout["status"] == "completed");
         final payoutPosition = m["payout_position"] ?? (i + 1);
 
         return Container(
@@ -503,7 +637,10 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                 backgroundColor: const Color(0xFFFFF7ED),
                 child: Text(
                   name.isNotEmpty ? name[0].toUpperCase() : "M",
-                  style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: primaryOrange),
+                  style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.bold,
+                      color: primaryOrange),
                 ),
               ),
               const SizedBox(width: 12),
@@ -534,13 +671,19 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isPaid ? activeGreenBg : const Color(0xFFFFF7ED),
+                  color: hasReceivedPayout || isPaid
+                      ? activeGreenBg
+                      : const Color(0xFFFFF7ED),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  isPaid ? "PAID" : "PENDING",
+                  hasReceivedPayout
+                      ? "PAID OUT"
+                      : (isPaid ? "PAID" : "PENDING"),
                   style: TextStyle(
-                    color: isPaid ? activeGreen : primaryOrange,
+                    color: hasReceivedPayout || isPaid
+                        ? activeGreen
+                        : primaryOrange,
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     fontFamily: 'Poppins',
@@ -556,10 +699,17 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
 
   /// Contributions / Cycle Summary Tab
   Widget _buildContributionsTab() {
-    final totalCollected = _groupSummary["total_collected"] ?? 0;
-    final totalPaidOut = _groupSummary["total_paid_out"] ?? 0;
-    final remainingCycles = _groupSummary["remaining_cycles"] ?? 0;
-    final completionPct = (_groupSummary["cycle_completion_percentage"] ?? 0).toDouble();
+    final financials = _groupSummary["financials"] is Map
+        ? Map<String, dynamic>.from(_groupSummary["financials"])
+        : _groupSummary;
+    final summaryGroup = _groupSummary["group"] is Map
+        ? Map<String, dynamic>.from(_groupSummary["group"])
+        : _groupSummary;
+    final totalCollected = financials["total_collected"] ?? 0;
+    final totalPaidOut = financials["total_paid_out"] ?? 0;
+    final remainingCycles = summaryGroup["remaining_cycles"] ?? 0;
+    final completionPct =
+        (summaryGroup["completion_percentage"] ?? 0).toDouble();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -569,11 +719,13 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
           Row(
             children: [
               Expanded(
-                child: _summaryCard("Total Pool", "ETB $totalCollected", Icons.savings_rounded, const Color(0xFF16A34A)),
+                child: _summaryCard("Total Pool", "ETB $totalCollected",
+                    Icons.savings_rounded, const Color(0xFF16A34A)),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _summaryCard("Total Paid Out", "ETB $totalPaidOut", Icons.send_rounded, primaryOrange),
+                child: _summaryCard("Total Paid Out", "ETB $totalPaidOut",
+                    Icons.send_rounded, primaryOrange),
               ),
             ],
           ),
@@ -591,20 +743,31 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Cycle Completion", style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 14)),
-                    Text("${completionPct.toInt()}%", style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: primaryOrange)),
+                    const Text("Cycle Completion",
+                        style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14)),
+                    Text("${completionPct.toInt()}%",
+                        style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.bold,
+                            color: primaryOrange)),
                   ],
                 ),
                 const SizedBox(height: 8),
                 LinearProgressIndicator(
                   value: completionPct / 100,
                   backgroundColor: const Color(0xFFE2E8F0),
-                  valueColor: const AlwaysStoppedAnimation<Color>(primaryOrange),
+                  valueColor:
+                      const AlwaysStoppedAnimation<Color>(primaryOrange),
                   minHeight: 8,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 const SizedBox(height: 8),
-                Text("Remaining cycles: $remainingCycles", style: const TextStyle(fontFamily: 'Poppins', color: textMuted, fontSize: 12)),
+                Text("Remaining cycles: $remainingCycles",
+                    style: const TextStyle(
+                        fontFamily: 'Poppins', color: textMuted, fontSize: 12)),
               ],
             ),
           ),
@@ -626,8 +789,15 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
         children: [
           Icon(icon, color: color, size: 22),
           const SizedBox(height: 8),
-          Text(value, style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16, color: textDark)),
-          Text(title, style: const TextStyle(fontFamily: 'Poppins', color: textMuted, fontSize: 12)),
+          Text(value,
+              style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: textDark)),
+          Text(title,
+              style: const TextStyle(
+                  fontFamily: 'Poppins', color: textMuted, fontSize: 12)),
         ],
       ),
     );
@@ -635,18 +805,61 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
 
   /// Activity Tab
   Widget _buildLoansTab() {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.history_rounded, size: 40, color: textMuted),
-            SizedBox(height: 8),
-            Text("Activity is recorded in real time for every cycle round.", textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Poppins', color: textMuted, fontSize: 13)),
-          ],
-        ),
-      ),
+    if (_activity.isEmpty) {
+      return const Center(
+        child: Text("No group activity yet",
+            style: TextStyle(fontFamily: 'Poppins', color: textMuted)),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(20),
+      itemCount: _activity.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final item = _activity[index];
+        final isPayout = item["activity_type"] == "payout";
+        final name = item["member_name"] ?? item["recipient_name"] ?? "Member";
+        final cycle = item["cycle_number"] ?? "-";
+        final amount = item[isPayout ? "payout_amount" : "amount"] ?? 0;
+        final date = _activityDate(item);
+
+        return ListTile(
+          tileColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          leading: CircleAvatar(
+            backgroundColor: isPayout ? activeGreenBg : const Color(0xFFFFF7ED),
+            child: Icon(
+              isPayout ? Icons.call_received_rounded : Icons.payments_rounded,
+              color: isPayout ? activeGreen : primaryOrange,
+            ),
+          ),
+          title: Text(
+            isPayout ? "Payout received" : "Contribution made",
+            style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w700,
+                fontSize: 13),
+          ),
+          subtitle: Text(
+            "$name  •  Cycle $cycle\n${date == DateTime.fromMillisecondsSinceEpoch(0) ? "" : "${date.day}/${date.month}/${date.year}"}",
+            style: const TextStyle(
+                fontFamily: 'Poppins', color: textMuted, fontSize: 12),
+          ),
+          isThreeLine: true,
+          trailing: Text(
+            "ETB $amount",
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w700,
+              color: isPayout ? activeGreen : textDark,
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -669,7 +882,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
           width: double.infinity,
           height: 52,
           child: ElevatedButton(
-            onPressed: () => _showContributionModal(context, groupTitle, amount),
+            onPressed: () =>
+                _showContributionModal(context, groupTitle, amount),
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryOrange,
               foregroundColor: Colors.white,

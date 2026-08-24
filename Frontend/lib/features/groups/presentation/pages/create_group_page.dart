@@ -28,10 +28,10 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   static const Color borderColor = Color(0xFFE2E8F0);
 
   final List<String> _frequencies = [
+    "Daily",
     "Weekly",
     "Bi-weekly",
     "Monthly",
-    "Custom",
   ];
 
   @override
@@ -60,16 +60,31 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
 
   String _getDurationText() {
     switch (_selectedFrequency) {
+      case "Daily":
+        return "$_maxMembers days";
       case "Weekly":
         return "$_maxMembers weeks";
       case "Bi-weekly":
         return "${_maxMembers * 2} weeks";
       case "Monthly":
         return "$_maxMembers months";
-      case "Custom":
-        return "$_maxMembers cycles";
       default:
         return "$_maxMembers months";
+    }
+  }
+
+  int _getCycleDuration() {
+    switch (_selectedFrequency) {
+      case "Daily":
+        return 1;
+      case "Weekly":
+        return 7;
+      case "Bi-weekly":
+        return 14;
+      case "Monthly":
+        return 30;
+      default:
+        return 30;
     }
   }
 
@@ -78,10 +93,13 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       return;
     }
 
-    final amount = int.tryParse(contributionController.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+    final amount = int.tryParse(
+            contributionController.text.replaceAll(RegExp(r'[^0-9]'), '')) ??
+        0;
     if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter a valid contribution amount")),
+        const SnackBar(
+            content: Text("Please enter a valid contribution amount")),
       );
       return;
     }
@@ -92,7 +110,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       final response = await GroupService().createGroup(
         groupName: groupNameController.text.trim(),
         contribution: amount,
-        duration: _maxMembers,
+        duration: _getCycleDuration(),
         maxMembers: _maxMembers,
         startDate: DateTime.now(),
         description: descriptionController.text.trim().isEmpty
@@ -115,9 +133,10 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(response["message"] ?? "Group created successfully!"),
-            backgroundColor: response["message"] != null && response["success"] == false
-                ? Colors.red.shade700
-                : const Color(0xFF10B981),
+            backgroundColor:
+                response["message"] != null && response["success"] == false
+                    ? Colors.red.shade700
+                    : const Color(0xFF10B981),
           ),
         );
         if (response["success"] != false) {
@@ -128,12 +147,11 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       debugPrint("Error creating group: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Group created successfully!"),
-            backgroundColor: Color(0xFF10B981),
+          SnackBar(
+            content: Text(e.toString().replaceFirst("Exception: ", "")),
+            backgroundColor: Colors.red.shade700,
           ),
         );
-        Navigator.of(context).pop(true);
       }
     } finally {
       if (mounted) {
@@ -203,7 +221,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+                      border: Border.all(
+                          color: const Color(0xFFF1F5F9), width: 1.5),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.03),
@@ -234,18 +253,22 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                                 fontSize: 14.5,
                                 fontWeight: FontWeight.w400,
                               ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 14),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: borderColor),
+                                borderSide:
+                                    const BorderSide(color: borderColor),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: borderColor),
+                                borderSide:
+                                    const BorderSide(color: borderColor),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: primaryOrange, width: 1.5),
+                                borderSide: const BorderSide(
+                                    color: primaryOrange, width: 1.5),
                               ),
                             ),
                             validator: (val) {
@@ -281,25 +304,30 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                                   ),
                                 ),
                               ),
-                              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                              prefixIconConstraints: const BoxConstraints(
+                                  minWidth: 0, minHeight: 0),
                               hintText: "5000",
                               hintStyle: const TextStyle(
                                 color: textLight,
                                 fontSize: 15,
                                 fontWeight: FontWeight.w400,
                               ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 14),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: borderColor),
+                                borderSide:
+                                    const BorderSide(color: borderColor),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: borderColor),
+                                borderSide:
+                                    const BorderSide(color: borderColor),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: primaryOrange, width: 1.5),
+                                borderSide: const BorderSide(
+                                    color: primaryOrange, width: 1.5),
                               ),
                             ),
                             validator: (val) {
@@ -321,14 +349,18 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 10),
                                 child: GestureDetector(
-                                  onTap: () => setState(() => _selectedFrequency = freq),
+                                  onTap: () =>
+                                      setState(() => _selectedFrequency = freq),
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 14),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: isSelected ? primaryOrange : borderColor,
+                                        color: isSelected
+                                            ? primaryOrange
+                                            : borderColor,
                                         width: isSelected ? 1.5 : 1.0,
                                       ),
                                     ),
@@ -341,7 +373,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                                           decoration: BoxDecoration(
                                             shape: BoxShape.circle,
                                             border: Border.all(
-                                              color: isSelected ? primaryOrange : const Color(0xFFCBD5E1),
+                                              color: isSelected
+                                                  ? primaryOrange
+                                                  : const Color(0xFFCBD5E1),
                                               width: isSelected ? 6.0 : 1.5,
                                             ),
                                           ),
@@ -351,7 +385,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                                           freq,
                                           style: TextStyle(
                                             fontSize: 15,
-                                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                            fontWeight: isSelected
+                                                ? FontWeight.w700
+                                                : FontWeight.w600,
                                             color: textDark,
                                           ),
                                         ),
@@ -366,10 +402,12 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                           const SizedBox(height: 12),
 
                           // 4. Maximum Members Stepper Section
-                          _buildFieldLabel("Maximum Members (Duration in cycles)"),
+                          _buildFieldLabel(
+                              "Maximum Members (Duration in cycles)"),
                           const SizedBox(height: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(12),
@@ -381,7 +419,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                                 // Minus Button
                                 IconButton(
                                   onPressed: _decrementMembers,
-                                  icon: const Icon(Icons.remove, color: textMuted, size: 22),
+                                  icon: const Icon(Icons.remove,
+                                      color: textMuted, size: 22),
                                   splashRadius: 20,
                                 ),
                                 // Member Count
@@ -396,7 +435,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                                 // Plus Button
                                 IconButton(
                                   onPressed: _incrementMembers,
-                                  icon: const Icon(Icons.add, color: primaryOrange, size: 22),
+                                  icon: const Icon(Icons.add,
+                                      color: primaryOrange, size: 22),
                                   splashRadius: 20,
                                 ),
                               ],
@@ -435,15 +475,18 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                               contentPadding: const EdgeInsets.all(16),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: borderColor),
+                                borderSide:
+                                    const BorderSide(color: borderColor),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: borderColor),
+                                borderSide:
+                                    const BorderSide(color: borderColor),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: primaryOrange, width: 1.5),
+                                borderSide: const BorderSide(
+                                    color: primaryOrange, width: 1.5),
                               ),
                             ),
                           ),

@@ -4,7 +4,8 @@ import '../../../core/network/dio_client.dart';
 class ContributionsService {
   final Dio _dio = createDioClient();
 
-  Future<Map<String, dynamic>> getContributions({String? groupId, String? status, int page = 1}) async {
+  Future<Map<String, dynamic>> getContributions(
+      {String? groupId, String? status, int page = 1}) async {
     final res = await _dio.get('/contributions', queryParameters: {
       if (groupId != null) 'group_id': groupId,
       if (status != null) 'status': status,
@@ -42,6 +43,15 @@ class ContributionsService {
 
   Future<Map<String, dynamic>> getById(String id) async {
     final res = await _dio.get('/contributions/$id');
+    return res.data['data'];
+  }
+
+  Future<Map<String, dynamic>> getGroupContributions(String groupId,
+      {int page = 1}) async {
+    final res = await _dio.get(
+      '/groups/$groupId/contributions',
+      queryParameters: {'page': page},
+    );
     return res.data['data'];
   }
 
