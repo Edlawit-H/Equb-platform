@@ -45,8 +45,6 @@ class ActiveGroupDashboard extends StatelessWidget {
       {required Map<String, dynamic> contribution}) {
     final amount = contribution['amount'] ?? 0;
     final groupName = contribution['group_name'] ?? 'Equb Circle';
-    final contributionId = contribution['contribution_id'];
-    final memberId = contribution['member_id'];
     final cycleNumber = contribution['cycle_number'] ?? 1;
 
     bool isPaying = false;
@@ -77,9 +75,9 @@ class ActiveGroupDashboard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              Text(
+              const Text(
                 "Pay Contribution",
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
                   color: textDark,
@@ -671,11 +669,11 @@ class ActiveGroupDashboard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-              child: Column(
+              child: const Column(
                 children: [
-                  const Icon(Icons.groups_outlined, size: 36, color: textMuted),
-                  const SizedBox(height: 8),
-                  const Text(
+                  Icon(Icons.groups_outlined, size: 36, color: textMuted),
+                  SizedBox(height: 8),
+                  Text(
                     "You haven't joined any groups yet",
                     style: TextStyle(
                         fontFamily: 'Poppins',
@@ -683,8 +681,8 @@ class ActiveGroupDashboard extends StatelessWidget {
                         fontSize: 14,
                         color: textDark),
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
+                  SizedBox(height: 4),
+                  Text(
                     "Create or join an Equb circle to start saving.",
                     style: TextStyle(
                         fontFamily: 'Poppins', fontSize: 12, color: textMuted),
@@ -705,25 +703,31 @@ class ActiveGroupDashboard extends StatelessWidget {
                 final group = groups[i];
                 final title = group["group_name"] ?? "Equb Circle";
                 final amount = group["contribution_amount"] ?? 0;
-                final actualMemberCount = group["actual_member_count"] ??
+                final currentMembers = group["current_members"] ??
                     group["member_count"] ??
-                    group["max_members"] ??
-                    0;
+                    group["members_count"] ??
+                    1;
+                final maxMembers = group["max_members"] ?? 10;
                 final cycle = group["current_cycle"] ?? 1;
-                final cycleTotal = group["total_cycles"] ?? actualMemberCount;
                 final status =
-                    (group["status"] ?? "active").toString().toUpperCase();
+                    (group["status"] ?? "pending").toString().toUpperCase();
+                final isPending = status == "PENDING";
 
                 return _buildGroupCard(
                   context: context,
                   title: title,
                   amountText: "ETB $amount / Cycle",
                   icon: Icons.groups_rounded,
-                  iconBgColor: const Color(0xFFEFF6FF),
-                  iconColor: const Color(0xFF2563EB),
+                  iconBgColor: isPending
+                      ? const Color(0xFFFFF7ED)
+                      : const Color(0xFFEFF6FF),
+                  iconColor: isPending
+                      ? const Color(0xFFEA580C)
+                      : const Color(0xFF2563EB),
                   badgeText: status,
-                  payoutText: "Cycle $cycle/$cycleTotal",
-                  memberCountText: "$actualMemberCount",
+                  isPending: isPending,
+                  payoutText: isPending ? "Pending Start" : "Cycle $cycle",
+                  memberCountText: "$currentMembers / $maxMembers",
                   groupData: group,
                 );
               },
@@ -741,10 +745,19 @@ class ActiveGroupDashboard extends StatelessWidget {
     required Color iconBgColor,
     required Color iconColor,
     required String badgeText,
+    required bool isPending,
     required String payoutText,
     required String memberCountText,
     required Map<String, dynamic> groupData,
   }) {
+    final badgeBg =
+        isPending ? const Color(0xFFFFF7ED) : const Color(0xFFDCFCE7);
+    final badgeColor =
+        isPending ? const Color(0xFFEA580C) : const Color(0xFF16A34A);
+    final badgeBorder = isPending
+        ? Border.all(color: const Color(0xFFEA580C).withValues(alpha: 0.3))
+        : null;
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -792,13 +805,14 @@ class ActiveGroupDashboard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFDCFCE7),
+                    color: badgeBg,
                     borderRadius: BorderRadius.circular(8),
+                    border: badgeBorder,
                   ),
                   child: Text(
                     badgeText,
-                    style: const TextStyle(
-                      color: Color(0xFF16A34A),
+                    style: TextStyle(
+                      color: badgeColor,
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.5,

@@ -333,18 +333,25 @@ class _GroupsPageState extends State<GroupsPage> {
     final List<Widget> cardWidgets = [];
     for (int i = 0; i < activeGroups.length; i++) {
       final g = activeGroups[i];
+      final currentMembers =
+          g["current_members"] ?? g["member_count"] ?? g["members_count"] ?? 1;
+      final maxMembers = g["max_members"] ?? 10;
+      final status = (g["status"] ?? "pending").toString().toUpperCase();
+      final isPending = status == "PENDING";
+
       if (i > 0) cardWidgets.add(const SizedBox(height: 18));
       cardWidgets.add(
         _buildGroupCard(
           title: g["group_name"] ?? "Equb Group",
-          membersText:
-              "${g["actual_member_count"] ?? g["member_count"] ?? 0} / ${g["max_members"] ?? 10} Members",
+          membersText: "$currentMembers / $maxMembers Members",
           amountText: "ETB ${g["contribution_amount"] ?? 0}",
           periodText: " / Cycle",
-          cycleText:
-              "Cycle ${g["current_cycle"] ?? 1}/${g["total_cycles"] ?? g["actual_member_count"] ?? g["member_count"] ?? 0}",
-          payoutText:
-              "Status: ${(g["status"] ?? "Active").toString().toUpperCase()}",
+          cycleText: isPending
+              ? "Pending Start"
+              : "Cycle ${g["current_cycle"] ?? 1}/${g["total_cycles"] ?? g["cycle_duration"] ?? 12}",
+          payoutText: "Status: $status",
+          statusText: status,
+          isPending: isPending,
           icon: Icons.groups_rounded,
           onDetails: () => _showGroupDetails(g),
         ),
@@ -356,44 +363,75 @@ class _GroupsPageState extends State<GroupsPage> {
 
   /// Completed Tab View
   List<Widget> _buildCompletedTab() {
-    return [
-      Container(
-        padding: const EdgeInsets.all(32),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        child: const Center(
-          child: Column(
-            children: [
-              Icon(
-                Icons.check_circle_outline_rounded,
-                size: 48,
-                color: Color(0xFF94A3B8),
-              ),
-              SizedBox(height: 12),
-              Text(
-                "No completed Equbs yet",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: textDark,
+    final completedGroups = _groups
+        .where(
+            (g) => (g["status"] ?? "").toString().toLowerCase() == "completed")
+        .toList();
+
+    if (completedGroups.isEmpty) {
+      return [
+        Container(
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: const Center(
+            child: Column(
+              children: [
+                Icon(
+                  Icons.check_circle_outline_rounded,
+                  size: 48,
+                  color: Color(0xFF94A3B8),
                 ),
-              ),
-              SizedBox(height: 4),
-              Text(
-                "Completed savings cycles will appear here.",
-                style: TextStyle(
-                  fontSize: 13,
-                  color: textMuted,
+                SizedBox(height: 12),
+                Text(
+                  "No completed Equbs yet",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: textDark,
+                  ),
                 ),
-              ),
-            ],
+                SizedBox(height: 4),
+                Text(
+                  "Completed savings cycles will appear here.",
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: textMuted,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    ];
+      ];
+    }
+
+    final List<Widget> cardWidgets = [];
+    for (int i = 0; i < completedGroups.length; i++) {
+      final g = completedGroups[i];
+      final currentMembers =
+          g["current_members"] ?? g["member_count"] ?? g["members_count"] ?? 1;
+      final maxMembers = g["max_members"] ?? 10;
+      if (i > 0) cardWidgets.add(const SizedBox(height: 18));
+      cardWidgets.add(
+        _buildGroupCard(
+          title: g["group_name"] ?? "Equb Group",
+          membersText: "$currentMembers / $maxMembers Members",
+          amountText: "ETB ${g["contribution_amount"] ?? 0}",
+          periodText: " / Cycle",
+          cycleText: "Completed",
+          payoutText: "All cycles paid out",
+          statusText: "COMPLETED",
+          isPending: false,
+          icon: Icons.check_circle_rounded,
+          onDetails: () => _showGroupDetails(g),
+        ),
+      );
+    }
+    return cardWidgets;
   }
 
   /// Single Group Card matching design
@@ -404,9 +442,17 @@ class _GroupsPageState extends State<GroupsPage> {
     required String periodText,
     required String cycleText,
     required String payoutText,
+    required String statusText,
+    required bool isPending,
     required IconData icon,
     required VoidCallback onDetails,
   }) {
+    final statusBg = isPending ? const Color(0xFFFFF7ED) : activeGreenBg;
+    final statusColor = isPending ? const Color(0xFFEA580C) : activeGreen;
+    final statusBorder = isPending
+        ? Border.all(color: const Color(0xFFEA580C).withValues(alpha: 0.3))
+        : null;
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -424,20 +470,22 @@ class _GroupsPageState extends State<GroupsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top Row (Icon, Title/Members, Active Badge)
+          // Top Row (Icon, Title/Members, Status Badge)
           Row(
             children: [
               Container(
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFDF1EB),
+                  color: isPending
+                      ? const Color(0xFFFFF7ED)
+                      : const Color(0xFFFDF1EB),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Center(
                   child: Icon(
                     icon,
-                    color: primaryBrown,
+                    color: isPending ? const Color(0xFFEA580C) : primaryBrown,
                     size: 24,
                   ),
                 ),
@@ -468,29 +516,30 @@ class _GroupsPageState extends State<GroupsPage> {
                   ],
                 ),
               ),
-              // Active Badge
+              // Status Badge
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: activeGreenBg,
+                  color: statusBg,
                   borderRadius: BorderRadius.circular(14),
+                  border: statusBorder,
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       Icons.circle,
-                      color: activeGreen,
+                      color: statusColor,
                       size: 7,
                     ),
-                    SizedBox(width: 5),
+                    const SizedBox(width: 5),
                     Text(
-                      "Active",
+                      statusText,
                       style: TextStyle(
-                        color: activeGreen,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                        color: statusColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ],
@@ -501,7 +550,7 @@ class _GroupsPageState extends State<GroupsPage> {
 
           const SizedBox(height: 14),
 
-          // Inner Grey Box (Contribution & Status)
+          // Inner Grey Box (Contribution & Status/Timeline)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -551,12 +600,12 @@ class _GroupsPageState extends State<GroupsPage> {
                   ],
                 ),
 
-                // Status
+                // Status / Timeline
                 Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     const Text(
-                      "STATUS",
+                      "TIMELINE",
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -567,10 +616,11 @@ class _GroupsPageState extends State<GroupsPage> {
                     const SizedBox(height: 4),
                     Text(
                       cycleText,
-                      style: const TextStyle(
-                        fontSize: 15,
+                      style: TextStyle(
+                        fontSize: 14,
                         fontWeight: FontWeight.w800,
-                        color: primaryBrown,
+                        color:
+                            isPending ? const Color(0xFFEA580C) : primaryBrown,
                       ),
                     ),
                   ],

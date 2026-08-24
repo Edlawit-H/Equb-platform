@@ -1,11 +1,12 @@
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:equb_app/core/network/dio_client.dart';
 import 'package:equb_app/core/constants/api_constants.dart';
 
 class ApiService {
   static const _storage = FlutterSecureStorage();
+  static final Dio _dio = createDioClient();
+
   static String get baseUrl => ApiConstants.authBaseUrl;
 
   /// Saves access token using the same key that dio_client.dart reads ('access_token')
@@ -17,64 +18,81 @@ class ApiService {
     await _storage.write(key: 'refresh_token', value: refreshToken);
   }
 
+  static Map<String, dynamic> _asMap(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      return data;
+    } else if (data is Map) {
+      return Map<String, dynamic>.from(data);
+    }
+    return <String, dynamic>{};
+  }
+
   static Future<Map<String, dynamic>> login(
       String phone, String password) async {
     try {
-      final response = await http.post(
-        Uri.parse("$baseUrl/login"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
+      final response = await _dio.post(
+        '/auth/login',
+        data: {
           "phone_number": phone,
           "password": password,
-        }),
+        },
       );
 
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final data = _asMap(response.data);
 
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        await saveToken(data['data']['accessToken']);
-        await saveRefreshToken(data['data']['refreshToken']);
-        return data;
+      if (data['data'] != null && data['data'] is Map) {
+        final token = data['data']['accessToken'] ?? data['data']['token'];
+        if (token != null) {
+          await saveToken(token.toString());
+        }
+        final refreshToken = data['data']['refreshToken'];
+        if (refreshToken != null) {
+          await saveRefreshToken(refreshToken.toString());
+        }
       }
 
-      throw Exception(data['message'] ?? 'Login failed');
-    } on Exception {
-      rethrow;
-    } catch (e) {
+      return data;
+    } on DioException catch (e) {
+      if (e.response != null && e.response?.data != null) {
+        final resData = e.response?.data;
+        if (resData is Map && resData['message'] != null) {
+          throw Exception(resData['message']);
+        }
+      }
       throw Exception(
-        'Unable to reach the server. Check that the backend is running on port 5000.',
+        e.message ??
+            'Unable to reach the server. Check that the backend is running on port 5000.',
       );
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception(e.toString());
     }
   }
 
   static Future<Map<String, dynamic>> getUserData() async {
-    final token = await _storage.read(key: 'access_token');
-    final response = await http.get(
-      Uri.parse("$baseUrl/user"),
-      headers: {
-        "Authorization": "Bearer $token",
-      },
-    );
-    return jsonDecode(response.body);
+    try {
+      final response = await _dio.get('/auth/profile');
+      return _asMap(response.data);
+    } on DioException catch (e) {
+      final msg = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(msg ?? e.message ?? 'Failed to fetch user data');
+    }
   }
 
   static Future<Map<String, dynamic>> register({
     required String phone,
   }) async {
-    final response = await http.post(
-      Uri.parse("$baseUrl/register"),
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: jsonEncode({
-        "phone_number": phone,
-      }),
-    );
-    final data = jsonDecode(response.body);
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return data;
-    } else {
-      throw Exception(data["message"] ?? "Registration failed");
+    try {
+      final response = await _dio.post(
+        '/auth/register',
+        data: {
+          "phone_number": phone,
+        },
+      );
+      return _asMap(response.data);
+    } on DioException catch (e) {
+      final msg = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(msg ?? e.message ?? 'Failed to register');
     }
   }
 
@@ -84,84 +102,68 @@ class ApiService {
     required String password,
     required String fullName,
   }) async {
-    final response = await http.post(
-      Uri.parse("$baseUrl/verify-otp"),
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: jsonEncode({
-        "phone_number": phone,
-        "otp_code": otp,
-        "password": password,
-        "full_name": fullName,
-      }),
-    );
+    try {
+      final response = await _dio.post(
+        '/auth/verify-otp',
+        data: {
+          "phone_number": phone,
+          "otp_code": otp,
+          "password": password,
+          "full_name": fullName,
+        },
+      );
 
-    final data = jsonDecode(response.body);
+      final data = _asMap(response.data);
 
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      final responseData = data['data'] as Map<String, dynamic>?;
-      final accessToken =
-          responseData?['accessToken'] ?? responseData?['token'];
-      final refreshToken = responseData?['refreshToken'];
-
-      if (accessToken is String && accessToken.isNotEmpty) {
-        await saveToken(accessToken);
+      if (data['data'] != null && data['data'] is Map) {
+        final token = data['data']['token'] ?? data['data']['accessToken'];
+        if (token != null) {
+          await saveToken(token.toString());
+        }
+        final refreshToken = data['data']['refreshToken'];
+        if (refreshToken != null) {
+          await saveRefreshToken(refreshToken.toString());
+        }
       }
-      if (refreshToken is String && refreshToken.isNotEmpty) {
-        await saveRefreshToken(refreshToken);
-      }
+
       return data;
-    } else {
-      throw Exception(data["message"] ?? "OTP verification failed");
+    } on DioException catch (e) {
+      final msg = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(msg ?? e.message ?? 'OTP verification failed');
     }
   }
 
   static Future<Map<String, dynamic>> resendRegistrationOTP({
     required String phone,
   }) async {
-    final response = await http.post(
-      Uri.parse("$baseUrl/resend-otp"),
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: jsonEncode({
-        "phone_number": phone,
-      }),
-    );
-
-    final data = jsonDecode(response.body);
-
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return data;
-    } else {
-      throw Exception(
-        data["message"] ?? "Failed to resend OTP",
+    try {
+      final response = await _dio.post(
+        '/auth/resend-otp',
+        data: {
+          "phone_number": phone,
+        },
       );
+      return _asMap(response.data);
+    } on DioException catch (e) {
+      final msg = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(msg ?? e.message ?? 'Failed to resend OTP');
     }
   }
 
   static Future<Map<String, dynamic>> requestPasswordReset({
     required String phone,
   }) async {
-    final response = await http.post(
-      Uri.parse("$baseUrl/forgot-password"),
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: jsonEncode({
-        "phone_number": phone,
-      }),
-    );
-
-    final data = jsonDecode(response.body);
-
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return data;
-    } else {
-      throw Exception(
-        data["message"] ?? "Failed to send reset OTP",
+    try {
+      final response = await _dio.post(
+        '/auth/forgot-password',
+        data: {
+          "phone_number": phone,
+        },
       );
+      return _asMap(response.data);
+    } on DioException catch (e) {
+      final msg = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(msg ?? e.message ?? 'Failed to send reset OTP');
     }
   }
 
@@ -170,26 +172,37 @@ class ApiService {
     required String otp,
     required String newPassword,
   }) async {
-    final response = await http.post(
-      Uri.parse("$baseUrl/reset-password"),
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: jsonEncode({
-        "phone_number": phone,
-        "otp_code": otp,
-        "new_password": newPassword,
-      }),
-    );
-
-    final data = jsonDecode(response.body);
-
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return data;
-    } else {
-      throw Exception(
-        data["message"] ?? "Password reset failed",
+    try {
+      final response = await _dio.post(
+        '/auth/reset-password',
+        data: {
+          "phone_number": phone,
+          "otp_code": otp,
+          "new_password": newPassword,
+        },
       );
+      return _asMap(response.data);
+    } on DioException catch (e) {
+      final msg = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(msg ?? e.message ?? 'Password reset failed');
     }
+  }
+
+  static Future<Map<String, dynamic>> refreshToken(String refreshToken) async {
+    try {
+      final response = await _dio.post(
+        '/auth/refresh-token',
+        data: {"refreshToken": refreshToken},
+      );
+      return _asMap(response.data);
+    } on DioException catch (e) {
+      final msg = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(msg ?? e.message ?? 'Failed to refresh token');
+    }
+  }
+
+  static Future<void> logout() async {
+    await _storage.delete(key: 'access_token');
+    await _storage.delete(key: 'refresh_token');
   }
 }

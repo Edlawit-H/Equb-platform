@@ -2,26 +2,26 @@ import pool from "../config/db.js";
 import crypto from "crypto";
 
 function generateInvitationCode() {
-  return crypto.randomBytes(4).toString('hex').toUpperCase();
+    return crypto.randomBytes(4).toString('hex').toUpperCase();
 }
 
 export async function createGroup(data, userId) {
     const client = await pool.connect();
+
     const {
-    group_name,
-    description,
-    contribution_amount,
-    cycle_duration,
-    max_members,
-    start_date,
-} = data;
+        group_name,
+        description,
+        contribution_amount,
+        cycle_duration,
+        max_members,
+        start_date
+    } = data;
+
     try {
         await client.query("BEGIN");
 
         const invitation_code = generateInvitationCode();
-        const startDate = start_date ? new Date(start_date) : new Date();
-        const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + max_members * cycle_duration);
+        const status = "pending";
 
         const { rows } = await client.query(
             `
@@ -32,12 +32,11 @@ export async function createGroup(data, userId) {
                 invitation_code,
                 contribution_amount,
                 cycle_duration,
-                max_members,
+                max_members,    
                 start_date,
-                end_date,
-                cycle_end_date
+                status
             )
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING *;
             `,
             [
@@ -48,10 +47,8 @@ export async function createGroup(data, userId) {
                 contribution_amount,
                 cycle_duration,
                 max_members,
-                startDate.toISOString().split('T')[0],
-                endDate.toISOString().split('T')[0],
-                new Date(startDate.getTime() + cycle_duration * 86400000)
-                    .toISOString().split('T')[0],
+                start_date || null,
+                status
             ]
         );
 
@@ -60,7 +57,7 @@ export async function createGroup(data, userId) {
         }
 
         const group = rows[0];
-        
+
         await client.query(
             `
             INSERT INTO group_members (
@@ -69,13 +66,13 @@ export async function createGroup(data, userId) {
                 role,
                 position_in_cycle
             )
-            VALUES ($1,$2,$3,$4);
+            VALUES ($1, $2, $3, $4);
             `,
             [
                 group.group_id,
                 userId,
                 "admin",
-                1,
+                1
             ]
         );
 
@@ -94,10 +91,21 @@ export async function createGroup(data, userId) {
 export async function getGroups() {
     const { rows } = await pool.query(
         `
-        SELECT *
-        FROM equb_groups
-        WHERE is_deleted = FALSE
-        ORDER BY created_at DESC;
+        SELECT
+            g.*,
+            (
+                SELECT COUNT(*)::int
+                FROM group_members gm
+                WHERE gm.group_id = g.group_id
+            ) AS member_count,
+            (
+                SELECT COUNT(*)::int
+                FROM group_members gm
+                WHERE gm.group_id = g.group_id
+            ) AS current_members
+        FROM equb_groups g
+        WHERE g.is_deleted = FALSE
+        ORDER BY g.created_at DESC;
         `
     );
 
@@ -107,10 +115,21 @@ export async function getGroups() {
 export async function getGroupById(groupId) {
     const { rows } = await pool.query(
         `
-        SELECT *
-        FROM equb_groups
-        WHERE group_id = $1
-          AND is_deleted = FALSE;
+        SELECT
+            g.*,
+            (
+                SELECT COUNT(*)::int
+                FROM group_members gm
+                WHERE gm.group_id = g.group_id
+            ) AS member_count,
+            (
+                SELECT COUNT(*)::int
+                FROM group_members gm
+                WHERE gm.group_id = g.group_id
+            ) AS current_members
+        FROM equb_groups g
+        WHERE g.group_id = $1
+          AND g.is_deleted = FALSE;
         `,
         [groupId]
     );
@@ -247,9 +266,9 @@ export async function updateGroup(groupId, userId, data) {
     const group = rows[0];
 
     // Authorization
- if (!(await isGroupAdmin(userId, groupId))) {
-    throw new Error("Only the group admin can update this group");
-}
+    if (!(await isGroupAdmin(userId, groupId))) {
+        throw new Error("Only the group admin can update this group");
+    }
 
     // Allowed fields
     const allowedFields = [
@@ -419,83 +438,82 @@ export async function deleteGroup(groupId, userId) {
 }
 
 export async function startGroup(groupId, userId) {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
 
-    const { rows } = await client.query(
-      `SELECT * FROM equb_groups WHERE group_id = $1 AND is_deleted = FALSE`,
-      [groupId]
-    );
-    if (rows.length === 0) throw new Error('Group not found');
+        const { rows } = await client.query(
+            `SELECT * FROM equb_groups WHERE group_id = $1 AND is_deleted = FALSE`,
+            [groupId]
+        );
+        if (rows.length === 0) throw new Error('Group not found');
 
-    const group = rows[0];
+        const group = rows[0];
 
-    if (!(await isGroupAdmin(userId, groupId))) {
-      throw new Error('Only the group admin can start this group');
-    }
-
-    if (group.status === 'active') throw new Error('Group has already started');
-    if (group.status === 'completed') throw new Error('Group is already completed');
-
-    const { rows: members } = await client.query(
-      `SELECT member_id FROM group_members WHERE group_id = $1 AND status = 'active'`,
-      [groupId]
-    );
-
-    const actualMemberCount = members.length;
-
-    if (actualMemberCount < 2) {
-      throw new Error('At least 2 members are required to start a group');
-    }
-
-        const startDate = new Date(group.start_date || new Date());
-        if (startDate > new Date()) {
-            throw new Error(`This group is scheduled to start on ${startDate.toISOString().split('T')[0]}`);
+        if (!(await isGroupAdmin(userId, groupId))) {
+            throw new Error('Only the group admin can start this group');
         }
-    const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + group.max_members * group.cycle_duration);
 
-    const cycleEndDate = new Date(startDate);
-    cycleEndDate.setDate(cycleEndDate.getDate() + group.cycle_duration);
-    const dueDate = new Date(cycleEndDate);
+        if (group.status === 'active') throw new Error('Group has already started');
+        if (group.status === 'completed') throw new Error('Group is already completed');
 
-    await client.query(
-    `UPDATE equb_groups
-     SET status = 'active', start_date = $1, end_date = $2, cycle_end_date = $3, total_cycles = $4
+        const { rows: members } = await client.query(
+            `SELECT member_id FROM group_members WHERE group_id = $1 AND status = 'active'`,
+            [groupId]
+        );
+
+        const actualMemberCount = members.length;
+
+        if (actualMemberCount < 2) {
+            throw new Error('At least 2 members are required to start a group');
+        }
+
+        const startDate = new Date();
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + actualMemberCount * group.cycle_duration);
+
+        const dueDate = new Date(startDate);
+        dueDate.setDate(dueDate.getDate() + (group.contribution_deadline_days ?? 1));
+
+        const cycleEndDate = new Date(startDate);
+        cycleEndDate.setDate(cycleEndDate.getDate() + group.cycle_duration);
+
+        await client.query(
+            `UPDATE equb_groups
+       SET status = 'active', start_date = $1, end_date = $2, cycle_end_date = $3, total_cycles = $4
        WHERE group_id = $5`,
-      [
-        startDate.toISOString().split('T')[0],
-        endDate.toISOString().split('T')[0],
-        cycleEndDate.toISOString().split('T')[0],
-        actualMemberCount,
-        groupId,
-      ]
-    );
+            [
+                startDate.toISOString().split('T')[0],
+                endDate.toISOString().split('T')[0],
+                cycleEndDate.toISOString().split('T')[0],
+                actualMemberCount,
+                groupId,
+            ]
+        );
 
-    for (const member of members) {
-      await client.query(
-        `INSERT INTO contributions (member_id, group_id, cycle_number, amount, due_date, status)
+        for (const member of members) {
+            await client.query(
+                `INSERT INTO contributions (member_id, group_id, cycle_number, amount, due_date, status)
          VALUES ($1, $2, 1, $3, $4, 'pending')`,
-        [member.member_id, groupId, group.contribution_amount, dueDate.toISOString().split('T')[0]]
-      );
+                [member.member_id, groupId, group.contribution_amount, dueDate.toISOString().split('T')[0]]
+            );
+        }
+
+        await client.query('COMMIT');
+
+        return {
+            group_id: groupId,
+            status: 'active',
+            start_date: startDate.toISOString().split('T')[0],
+            end_date: endDate.toISOString().split('T')[0],
+            cycle_1_due_date: dueDate.toISOString().split('T')[0],
+            total_cycles: actualMemberCount,
+            members_count: actualMemberCount,
+        };
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
     }
-
-    await client.query('COMMIT');
-
-    return {
-      group_id: groupId,
-      status: 'active',
-      start_date: startDate.toISOString().split('T')[0],
-      end_date: endDate.toISOString().split('T')[0],
-      cycle_1_due_date: dueDate.toISOString().split('T')[0],
-      total_cycles: actualMemberCount,
-      members_count: actualMemberCount,
-    };
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
 }
