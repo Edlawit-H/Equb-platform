@@ -7,15 +7,16 @@ function generateInvitationCode() {
 
 export async function createGroup(data, userId) {
     const client = await pool.connect();
+
     const {
         group_name,
         description,
         contribution_amount,
         cycle_duration,
         max_members,
-        selection_mode = 'positional',
-        contribution_deadline_days = 1,
+        start_date
     } = data;
+
     try {
         await client.query("BEGIN");
 
@@ -27,13 +28,13 @@ export async function createGroup(data, userId) {
                 group_name,
                 description,
                 admin_id,
+                invitation_code,
                 contribution_amount,
                 cycle_duration,
                 max_members,
-                selection_mode,
-                contribution_deadline_days
+                start_date
             )
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING *;
             `,
             [
@@ -44,8 +45,7 @@ export async function createGroup(data, userId) {
                 contribution_amount,
                 cycle_duration,
                 max_members,
-                selection_mode,
-                contribution_deadline_days,
+                start_date || null
             ]
         );
 
@@ -63,13 +63,13 @@ export async function createGroup(data, userId) {
                 role,
                 position_in_cycle
             )
-            VALUES ($1,$2,$3,$4);
+            VALUES ($1, $2, $3, $4);
             `,
             [
                 group.group_id,
                 userId,
                 "admin",
-                1,
+                1
             ]
         );
 
