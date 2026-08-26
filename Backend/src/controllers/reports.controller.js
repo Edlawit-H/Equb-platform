@@ -145,7 +145,7 @@ export const getGroupSummary = asyncWrapper(async (req, res) => {
 
   const [groupRes, contribRes, payoutRes, memberRes] = await Promise.all([
     pool.query(
-      `SELECT group_id, group_name, contribution_amount, cycle_duration, max_members, current_cycle, status
+      `SELECT group_id, group_name, contribution_amount, cycle_duration, max_members, total_cycles, current_cycle, status
        FROM equb_groups WHERE group_id = $1 AND is_deleted = FALSE`,
       [groupId]
     ),
@@ -185,12 +185,12 @@ export const getGroupSummary = asyncWrapper(async (req, res) => {
   }
 
   const group = groupRes.rows[0];
-  const maxMembers = group.max_members || 1;
+  const totalCycles = group.total_cycles || group.max_members || 1;
   const currentCycle = group.current_cycle || 1;
-  const remainingCycles = Math.max(0, maxMembers - currentCycle + 1);
+  const remainingCycles = Math.max(0, totalCycles - currentCycle + 1);
   const completionPercentage = group.status === 'completed'
     ? 100
-    : Math.min(100, Math.round(((currentCycle - 1) / maxMembers) * 100));
+    : Math.min(100, Math.round(((currentCycle - 1) / totalCycles) * 100));
 
   res.status(200).json({
     status: 'success',
@@ -201,6 +201,7 @@ export const getGroupSummary = asyncWrapper(async (req, res) => {
         contribution_amount: Number(group.contribution_amount),
         cycle_duration: group.cycle_duration,
         max_members: group.max_members,
+        total_cycles: totalCycles,
         current_cycle: group.current_cycle,
         status: group.status,
         remaining_cycles: remainingCycles,

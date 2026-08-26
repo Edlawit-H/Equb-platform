@@ -138,6 +138,7 @@ export const getPayoutSchedule = asyncWrapper(async (req, res) => {
        eg.group_name,
        gm.position_in_cycle,
        eg.current_cycle,
+      eg.total_cycles,
        eg.contribution_amount,
        eg.cycle_duration,
        eg.max_members,
@@ -178,6 +179,7 @@ export const getPayoutSchedule = asyncWrapper(async (req, res) => {
       group_name: row.group_name,
       position_in_cycle: row.position_in_cycle,
       current_cycle: row.current_cycle,
+      total_cycles: row.total_cycles || row.active_members_count,
       projected_date: projectedDate,
       estimated_payout_amount: estimatedPayoutAmount,
       status: payoutStatus,
@@ -234,8 +236,8 @@ export const getPayoutById = asyncWrapper(async (req, res) => {
 
 // Get all payouts for a group
 export const getGroupPayouts = asyncWrapper(async (req, res) => {
-  const { id: groupId } = req.params;
-  const { page = '1', limit = '20' } = req.query;
+  const groupId = req.params.groupId || req.params.id;
+  const { page = '1', limit = '50' } = req.query;
 
   if (req.userRole !== 'system_admin') {
     const { rows: memberCheck } = await pool.query(
@@ -249,7 +251,7 @@ export const getGroupPayouts = asyncWrapper(async (req, res) => {
   }
 
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
-  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
   const offset = (pageNum - 1) * limitNum;
 
   const [dataResult, countResult] = await Promise.all([
@@ -295,10 +297,6 @@ export const getGroupPayouts = asyncWrapper(async (req, res) => {
 
 // Admin manual approve for pending payout
 export const approvePayout = asyncWrapper(async (req, res) => {
-  if (req.userRole !== 'system_admin') {
-    throw new AppError('Forbidden', 403);
-  }
-
   const { id } = req.params;
 
   const client = await pool.connect();
@@ -307,9 +305,10 @@ export const approvePayout = asyncWrapper(async (req, res) => {
 
     const { rows: payoutRows } = await client.query(
       `SELECT p.payout_id, p.group_id, p.member_id, p.payout_amount, p.cycle_number, p.status,
-              gm.user_id
+              gm.user_id, eg.admin_id
        FROM payouts p
        JOIN group_members gm ON gm.member_id = p.member_id
+       JOIN equb_groups eg ON eg.group_id = p.group_id
        WHERE p.payout_id = $1`,
       [id]
     );
@@ -319,6 +318,11 @@ export const approvePayout = asyncWrapper(async (req, res) => {
     }
 
     const payout = payoutRows[0];
+
+    if (req.userRole !== 'system_admin' && payout.admin_id !== req.userId) {
+      throw new AppError('Only the group admin or system admin can approve payouts', 403);
+    }
+
     if (payout.status !== 'pending') {
       throw new AppError(`Cannot approve payout with status '${payout.status}'`, 400);
     }
@@ -413,26 +417,37 @@ export const approvePayout = asyncWrapper(async (req, res) => {
 
 // Admin reject pending payout
 export const rejectPayout = asyncWrapper(async (req, res) => {
-  if (req.userRole !== 'system_admin') {
-    throw new AppError('Forbidden', 403);
-  }
-
   const { id } = req.params;
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    const { rows } = await client.query(
-      `UPDATE payouts SET status = 'rejected'
-       WHERE payout_id = $1 AND status = 'pending'
-       RETURNING payout_id`,
+    const { rows: payoutRows } = await client.query(
+      `SELECT p.payout_id, p.status, eg.admin_id
+       FROM payouts p
+       JOIN equb_groups eg ON eg.group_id = p.group_id
+       WHERE p.payout_id = $1`,
       [id]
     );
 
-    if (rows.length === 0) {
-      throw new AppError('Payout not found or not in pending status', 404);
+    if (payoutRows.length === 0) {
+      throw new AppError('Payout not found', 404);
     }
+
+    const payout = payoutRows[0];
+    if (req.userRole !== 'system_admin' && payout.admin_id !== req.userId) {
+      throw new AppError('Only the group admin or system admin can reject payouts', 403);
+    }
+
+    if (payout.status !== 'pending') {
+      throw new AppError(`Cannot reject payout with status '${payout.status}'`, 400);
+    }
+
+    await client.query(
+      `UPDATE payouts SET status = 'rejected' WHERE payout_id = $1`,
+      [id]
+    );
 
     await writeAuditLog(client, req.userId, 'payout_rejected', 'payouts', id);
 

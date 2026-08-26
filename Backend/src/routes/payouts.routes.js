@@ -23,9 +23,9 @@ router.get('/', validate(payoutFilterSchema), getMyPayouts);
 router.get('/history', getPayoutHistory);
 router.get('/schedule', getPayoutSchedule);
 
-// Admin action endpoints
-router.post('/:id/approve', requireRole('system_admin'), approvePayout);
-router.post('/:id/reject', requireRole('system_admin'), rejectPayout);
+// Admin / Group Creator action endpoints
+router.post('/:id/approve', approvePayout);
+router.post('/:id/reject', rejectPayout);
 
 // Single resource endpoints
 router.get('/:id', getPayoutById);
