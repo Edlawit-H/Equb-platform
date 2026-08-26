@@ -35,6 +35,7 @@ import '../../features/contributions/presentation/pages/pay_contribution_page.da
 import '../../features/payouts/presentation/pages/payout_schedule_page.dart';
 import '../../features/payouts/presentation/pages/payout_history_page.dart';
 import '../../features/payouts/presentation/pages/payout_detail_page.dart';
+import '../../features/payouts/presentation/pages/payout_received_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/settings/presentation/pages/language_page.dart';
 import '../../features/settings/presentation/pages/pin_setup_page.dart';
@@ -123,9 +124,20 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
     final id = name.replaceFirst('/contributions/', '');
     page = ContributionDetailPage(contributionId: id);
   } else if (name == '/payouts/schedule') {
-    page = const PayoutSchedulePage();
+    final gId = (args is Map) ? args['group_id']?.toString() : (args is String ? args : null);
+    final gName = (args is Map) ? args['group_name']?.toString() : null;
+    page = PayoutSchedulePage(groupId: gId, groupName: gName);
   } else if (name == '/payouts/history') {
-    page = const PayoutHistoryPage();
+    final gId = (args is Map) ? args['group_id']?.toString() : (args is String ? args : null);
+    page = PayoutHistoryPage(groupId: gId);
+  } else if (name == '/payouts/notification' || name == '/payouts/received' || name == '/payouts/won') {
+    final map = args is Map<String, dynamic> ? args : <String, dynamic>{};
+    page = PayoutReceivedPage(
+      amount: map['amount'] is num ? (map['amount'] as num).toDouble() : null,
+      groupName: map['group_name']?.toString(),
+      cycleNumber: map['cycle_number'] is int ? map['cycle_number'] as int : null,
+      recipientName: map['recipient_name']?.toString(),
+    );
   } else if (name.startsWith('/payouts/')) {
     final id = name.replaceFirst('/payouts/', '');
     page = PayoutDetailPage(payoutId: id);

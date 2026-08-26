@@ -709,6 +709,10 @@ class ActiveGroupDashboard extends StatelessWidget {
                     1;
                 final maxMembers = group["max_members"] ?? 10;
                 final cycle = group["current_cycle"] ?? 1;
+                final totalCycles = group["total_cycles"] ??
+                    group["actual_member_count"] ??
+                    group["member_count"] ??
+                    currentMembers;
                 final status =
                     (group["status"] ?? "pending").toString().toUpperCase();
                 final isPending = status == "PENDING";
@@ -726,7 +730,8 @@ class ActiveGroupDashboard extends StatelessWidget {
                       : const Color(0xFF2563EB),
                   badgeText: status,
                   isPending: isPending,
-                  payoutText: isPending ? "Pending Start" : "Cycle $cycle",
+                  payoutText:
+                      isPending ? "Pending Start" : "Cycle $cycle/$totalCycles",
                   memberCountText: "$currentMembers / $maxMembers",
                   groupData: group,
                 );

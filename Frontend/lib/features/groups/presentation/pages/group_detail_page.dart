@@ -837,6 +837,7 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
   }
 
   /// Contributions / Cycle Summary Tab
+  /// Contributions / Cycle Summary Tab (Complete Cycle Information & Payouts Hub)
   Widget _buildContributionsTab() {
     final financials = _groupSummary["financials"] is Map
         ? Map<String, dynamic>.from(_groupSummary["financials"])
@@ -844,89 +845,394 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
     final groupSummary = _groupSummary["group"] is Map
         ? Map<String, dynamic>.from(_groupSummary["group"])
         : _groupSummary;
+
     final totalCollected = financials["total_collected"] ?? 0;
     final totalPaidOut = financials["total_paid_out"] ?? 0;
-    final remainingCycles = groupSummary["remaining_cycles"] ?? 0;
-    final completionPct =
-        (groupSummary["completion_percentage"] ?? 0).toDouble();
+    final paidCount = financials["paid_contributions_count"] ?? 0;
+    final pendingCount = financials["pending_contributions_count"] ?? 0;
+    final overdueCount = financials["overdue_contributions_count"] ?? 0;
 
-    return SingleChildScrollView(
+    final currentCycle = groupSummary["current_cycle"] ?? _groupData["current_cycle"] ?? 1;
+    final totalCycles = groupSummary["total_cycles"] ?? _groupData["total_cycles"] ?? (_maxMembers > 0 ? _maxMembers : _members.length);
+    final remainingCycles = groupSummary["remaining_cycles"] ?? (totalCycles > currentCycle ? totalCycles - currentCycle + 1 : 0);
+    final completionPct = (groupSummary["completion_percentage"] ?? ((currentCycle - 1) / (totalCycles > 0 ? totalCycles : 1) * 100)).toDouble();
+
+    final cycleDuration = _groupData["cycle_duration"] ?? groupSummary["cycle_duration"] ?? 7;
+    final contribAmount = _amountVal is num ? (_amountVal as num).toDouble() : double.tryParse('$_amountVal') ?? 0.0;
+
+    return ListView(
       padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _summaryCard(
-                  "Total Pool",
-                  "ETB $totalCollected",
-                  Icons.savings_rounded,
-                  const Color(0xFF16A34A),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const PayoutHistoryPage(),
-                    ),
-                  ),
-                  child: _summaryCard(
-                    "Total Paid Out",
-                    "ETB $totalPaidOut",
-                    Icons.send_rounded,
-                    primaryOrange,
-                  ),
-                ),
+      children: [
+        // 1. Comprehensive Cycle Completion Card
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text("Cycle Completion",
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "CYCLE COMPLETION STATUS",
                         style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14)),
-                    Text("${completionPct.toInt()}%",
+                          fontFamily: 'Poppins',
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          color: textMuted,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        "Cycle $currentCycle of $totalCycles",
                         style: const TextStyle(
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.bold,
-                            color: primaryOrange)),
-                  ],
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
+                          color: textDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: primaryOrange.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      "${completionPct.toInt()}% Completed",
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w800,
+                        color: primaryOrange,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: (completionPct / 100).clamp(0.0, 1.0),
+                  backgroundColor: const Color(0xFFF1F5F9),
+                  valueColor: const AlwaysStoppedAnimation<Color>(primaryOrange),
+                  minHeight: 10,
                 ),
-                const SizedBox(height: 8),
-                LinearProgressIndicator(
-                  value: completionPct / 100,
-                  backgroundColor: const Color(0xFFE2E8F0),
-                  valueColor:
-                      const AlwaysStoppedAnimation<Color>(primaryOrange),
-                  minHeight: 8,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                const SizedBox(height: 8),
-                Text("Remaining cycles: $remainingCycles",
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Remaining Cycles: $remainingCycles",
                     style: const TextStyle(
-                        fontFamily: 'Poppins', color: textMuted, fontSize: 12)),
-              ],
+                      fontFamily: 'Poppins',
+                      color: textMuted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    "Duration: Every $cycleDuration days",
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      color: textMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // 2. Financial Metrics Grid
+        Row(
+          children: [
+            Expanded(
+              child: _summaryCard(
+                "Total Pool Collected",
+                "ETB $totalCollected",
+                Icons.savings_rounded,
+                activeGreen,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _summaryCard(
+                "Total Paid Out",
+                "ETB $totalPaidOut",
+                Icons.send_rounded,
+                primaryOrange,
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+
+        Row(
+          children: [
+            Expanded(
+              child: _summaryCard(
+                "Amount / Member",
+                "ETB ${contribAmount.toStringAsFixed(0)}",
+                Icons.payments_rounded,
+                const Color(0xFF2563EB),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _summaryCard(
+                "Active Members",
+                "${_members.isNotEmpty ? _members.length : 1} Joined",
+                Icons.people_alt_rounded,
+                const Color(0xFF7C3AED),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 16),
+
+        // 3. Current Cycle Payment Breakdown Card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Current Cycle Payment Status",
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13.5,
+                  color: textDark,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _statusCountItem("Paid", "$paidCount", activeGreen, Icons.check_circle_rounded),
+                  _statusCountItem("Pending", "$pendingCount", primaryOrange, Icons.schedule_rounded),
+                  _statusCountItem("Overdue", "$overdueCount", const Color(0xFFDC2626), Icons.warning_rounded),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        const Text(
+          "Payouts & Reports Hub",
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.w800,
+            fontSize: 15,
+            color: textDark,
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // 4. Connected Payout & Report Action Cards
+        _hubActionCard(
+          icon: Icons.timeline_rounded,
+          iconColor: primaryOrange,
+          title: "Payout Schedule",
+          subtitle: "View rotation timeline, member turn order & projected dates",
+          badgeText: "Timeline",
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PayoutSchedulePage(
+                groupId: _groupId,
+                groupName: _groupTitle,
+              ),
             ),
           ),
-        ],
+        ),
+
+        const SizedBox(height: 10),
+
+        _hubActionCard(
+          icon: Icons.history_rounded,
+          iconColor: activeGreen,
+          title: "Payout History",
+          subtitle: "Completed disbursements & payout receipts for this circle",
+          badgeText: "Receipts",
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PayoutHistoryPage(groupId: _groupId),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
+        _hubActionCard(
+          icon: Icons.download_rounded,
+          iconColor: const Color(0xFF2563EB),
+          title: "Download Group Report",
+          subtitle: "Export full transaction report in PDF/TXT or Excel/CSV format",
+          badgeText: "Export",
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ExportReportPage(groupId: _groupId),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Widget _statusCountItem(String label, String count, Color color, IconData icon) {
+    return Column(
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 6),
+            Text(
+              count,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 11.5,
+            color: textMuted,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _hubActionCard({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required String badgeText,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: iconColor, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: textDark,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: iconColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          badgeText,
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 9.5,
+                            color: iconColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 11.5,
+                      color: textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: textMuted, size: 20),
+          ],
+        ),
       ),
     );
   }
@@ -944,129 +1250,136 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
         children: [
           Icon(icon, color: color, size: 22),
           const SizedBox(height: 8),
-          Text(value,
-              style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: textDark)),
-          Text(title,
-              style: const TextStyle(
-                  fontFamily: 'Poppins', color: textMuted, fontSize: 12)),
+          Text(
+            value,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w800,
+              fontSize: 15.5,
+              color: textDark,
+            ),
+          ),
+          Text(
+            title,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              color: textMuted,
+              fontSize: 11.5,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  /// Activity Tab
+  /// Activity Tab (Clean Transaction & Payout Stream)
   Widget _buildLoansTab() {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-          child: SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _groupId.isEmpty
-                  ? null
-                  : () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ExportReportPage(groupId: _groupId),
-                        ),
-                      ),
-              icon: const Icon(Icons.download_rounded, size: 17),
-              label: const Text('Download Group Report'),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-          child: Row(
+    if (_transactions.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const PayoutSchedulePage(),
-                    ),
-                  ),
-                  icon: const Icon(Icons.timeline_rounded, size: 17),
-                  label: const Text('Payout Schedule'),
+              Icon(Icons.history_rounded, size: 52, color: textMuted.withValues(alpha: 0.4)),
+              const SizedBox(height: 14),
+              const Text(
+                'No activity recorded yet',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: textDark,
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const PayoutHistoryPage(),
-                    ),
-                  ),
-                  icon: const Icon(Icons.history_rounded, size: 17),
-                  label: const Text('Payout History'),
+              const SizedBox(height: 6),
+              const Text(
+                'Contributions and payouts will be listed here as rounds progress.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  color: textMuted,
+                  fontSize: 12.5,
                 ),
               ),
             ],
           ),
         ),
-        Expanded(
-          child: _transactions.isEmpty
-              ? const Center(
-                  child: Text('No group transactions yet',
-                      style:
-                          TextStyle(fontFamily: 'Poppins', color: textMuted)),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.all(20),
-                  itemCount: _transactions.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (context, index) {
-                    final transaction = _transactions[index];
-                    final type =
-                        transaction['type']?.toString() ?? 'transaction';
-                    final isPayout = type == 'payout_credit';
-                    final memberName =
-                        transaction['full_name']?.toString() ?? 'Member';
-                    return ListTile(
-                      tileColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        side: const BorderSide(color: Color(0xFFE2E8F0)),
-                      ),
-                      leading: Icon(
-                        isPayout
-                            ? Icons.call_received_rounded
-                            : Icons.payments_rounded,
-                        color: isPayout ? activeGreen : primaryOrange,
-                      ),
-                      title: Text(
-                        isPayout ? 'Payout' : 'Contribution',
-                        style: const TextStyle(
-                            fontFamily: 'Poppins', fontWeight: FontWeight.w700),
-                      ),
-                      subtitle: Text(
-                        memberName,
-                        style: const TextStyle(
-                            fontFamily: 'Poppins',
-                            color: textMuted,
-                            fontSize: 12),
-                      ),
-                      trailing: Text(
-                        '${isPayout ? '+' : '-'}ETB ${transaction['amount'] ?? 0}',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w700,
-                          color: isPayout ? activeGreen : textDark,
-                        ),
-                      ),
-                    );
-                  },
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(20),
+      itemCount: _transactions.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final transaction = _transactions[index];
+        final type = transaction['type']?.toString() ?? 'transaction';
+        final isPayout = type == 'payout_credit' || type == 'payout';
+        final memberName = transaction['full_name']?.toString() ?? 'Member';
+        final amount = transaction['amount'] ?? 0;
+        final dateStr = (transaction['created_at'] ?? '').toString().split('T').first;
+
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: (isPayout ? activeGreen : primaryOrange).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-        ),
-      ],
+                child: Icon(
+                  isPayout ? Icons.call_received_rounded : Icons.payments_rounded,
+                  color: isPayout ? activeGreen : primaryOrange,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isPayout ? 'Payout Disbursed' : 'Contribution Paid',
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: textDark,
+                      ),
+                    ),
+                    Text(
+                      '$memberName ${dateStr.isNotEmpty ? "• $dateStr" : ""}',
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        color: textMuted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '${isPayout ? '+' : '-'}ETB $amount',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                  color: isPayout ? activeGreen : textDark,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

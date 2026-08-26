@@ -35,4 +35,14 @@ class PayoutsService {
         .get('/groups/$groupId/payouts', queryParameters: {'page': page});
     return res.data['data'];
   }
+
+  Future<Map<String, dynamic>> approvePayout(String payoutId) async {
+    final res = await _dio.post('/payouts/$payoutId/approve');
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> rejectPayout(String payoutId) async {
+    final res = await _dio.post('/payouts/$payoutId/reject');
+    return res.data;
+  }
 }
