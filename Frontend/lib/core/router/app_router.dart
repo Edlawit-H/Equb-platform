@@ -36,6 +36,7 @@ import '../../features/contributions/presentation/pages/pay_contribution_page.da
 import '../../features/payouts/presentation/pages/payout_schedule_page.dart';
 import '../../features/payouts/presentation/pages/payout_history_page.dart';
 import '../../features/payouts/presentation/pages/payout_detail_page.dart';
+import '../../features/payouts/presentation/pages/payout_received_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/settings/presentation/pages/language_page.dart';
 import '../../features/settings/presentation/pages/pin_setup_page.dart';
@@ -49,7 +50,7 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
 
   Widget page;
 
-  // Entry & Auth Routes (Etsub)
+  // Entry & Auth Routes
   if (name == '/' || name == '/splash') {
     page = const SplashPage();
   } else if (name == '/onboarding') {
@@ -67,7 +68,7 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
   } else if (name == '/biometric-setup') {
     page = const BiometricSetupPage();
   }
-  // Group Management Routes (Etsub)
+  // Group Management Routes
   else if (name == '/groups') {
     page = const GroupsPage();
   } else if (name == '/groups/create') {
@@ -87,7 +88,7 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
   } else if (name == '/groups/invite') {
     page = const InviteMembersPage();
   }
-  // User Profile Routes (Etsub)
+  // User Profile Routes
   else if (name == '/profile') {
     page = const ProfilePage();
   } else if (name == '/profile/edit') {
@@ -97,7 +98,7 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
   } else if (name == '/change-password') {
     page = const ChangePasswordPage();
   }
-  // Notification Routes (Etsub)
+  // Notification Routes
   else if (name == '/notifications') {
     page = const NotificationsPage();
   } else if (name == '/notifications/detail') {
@@ -120,21 +121,34 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
   } else if (name == '/contributions') {
     page = const ContributionListPage();
   } else if (name.startsWith('/contributions/pay')) {
-    page = PayContributionPage(contribution: (args as Map<String, dynamic>?) ?? {});
+    page = PayContributionPage(
+        contribution: (args as Map<String, dynamic>?) ?? {});
   } else if (name.startsWith('/contributions/')) {
     final id = name.replaceFirst('/contributions/', '');
     page = ContributionDetailPage(contributionId: id);
   } else if (name == '/payouts/schedule') {
-    page = const PayoutSchedulePage();
+    final gId = (args is Map) ? args['group_id']?.toString() : (args is String ? args : null);
+    final gName = (args is Map) ? args['group_name']?.toString() : null;
+    page = PayoutSchedulePage(groupId: gId, groupName: gName);
   } else if (name == '/payouts/history') {
-    page = const PayoutHistoryPage();
+    final gId = (args is Map) ? args['group_id']?.toString() : (args is String ? args : null);
+    page = PayoutHistoryPage(groupId: gId);
+  } else if (name == '/payouts/notification' || name == '/payouts/received' || name == '/payouts/won') {
+    final map = args is Map<String, dynamic> ? args : <String, dynamic>{};
+    page = PayoutReceivedPage(
+      amount: map['amount'] is num ? (map['amount'] as num).toDouble() : null,
+      groupName: map['group_name']?.toString(),
+      cycleNumber: map['cycle_number'] is int ? map['cycle_number'] as int : null,
+      recipientName: map['recipient_name']?.toString(),
+    );
   } else if (name.startsWith('/payouts/')) {
     final id = name.replaceFirst('/payouts/', '');
     page = PayoutDetailPage(payoutId: id);
   } else if (name == '/reports') {
     page = const AnalyticsDashboardPage();
   } else if (name == '/reports/export') {
-    page = const ExportReportPage();
+    page = ExportReportPage(
+        groupId: (args as Map<String, dynamic>?)?['group_id']?.toString());
   } else if (name == '/settings') {
     page = const SettingsPage();
   } else if (name == '/settings/language') {

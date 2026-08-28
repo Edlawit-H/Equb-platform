@@ -348,7 +348,7 @@ class _GroupsPageState extends State<GroupsPage> {
           periodText: " / Cycle",
           cycleText: isPending
               ? "Pending Start"
-              : "Cycle ${g["current_cycle"] ?? 1}/${g["total_cycles"] ?? g["cycle_duration"] ?? 12}",
+              : "Cycle ${g["current_cycle"] ?? 1}/${g["total_cycles"] ?? g["current_members"] ?? g["member_count"] ?? 0}",
           payoutText: "Status: $status",
           statusText: status,
           isPending: isPending,

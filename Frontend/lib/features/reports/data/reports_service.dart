@@ -18,7 +18,8 @@ class ReportsService {
   }
 
   Future<Map<String, dynamic>> getGroupSummary(String groupId) async {
-    final res = await _dio.get('/reports/group-summary', queryParameters: {'group_id': groupId});
+    final res = await _dio
+        .get('/reports/group-summary', queryParameters: {'group_id': groupId});
     return res.data['data'];
   }
 
@@ -31,6 +32,13 @@ class ReportsService {
   /// Token is passed as query param since browser <a> tags can't set Authorization headers.
   Future<String> getExportUrl(String path) async {
     final token = await _storage.read(key: 'access_token');
-    return '${ApiConstants.baseUrl}$path?token=${Uri.encodeComponent(token ?? '')}';
+    final separator = path.contains('?') ? '&' : '?';
+    return '${ApiConstants.baseUrl}$path${separator}token=${Uri.encodeComponent(token ?? '')}';
+  }
+
+  Future<String> getGroupExportUrl(String groupId, {required bool excel}) {
+    final path =
+        excel ? '/reports/export/group/excel' : '/reports/export/group/pdf';
+    return getExportUrl('$path?group_id=${Uri.encodeComponent(groupId)}');
   }
 }

@@ -24,13 +24,23 @@ class _PersonalReportPageState extends State<PersonalReportPage> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final data = await _service.getUserSummary();
-      if (mounted) setState(() { _summary = data; _loading = false; });
+      if (mounted)
+        setState(() {
+          _summary = data;
+          _loading = false;
+        });
     } catch (e) {
       if (mounted) {
-        setState(() { _loading = false; _error = 'Failed to load report'; });
+        setState(() {
+          _loading = false;
+          _error = 'Failed to load report';
+        });
         ErrorSnackbar.show(context, 'Failed to load personal report');
       }
     }
@@ -41,7 +51,9 @@ class _PersonalReportPageState extends State<PersonalReportPage> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Personal Report', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
+        title: const Text('Personal Report',
+            style:
+                TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
         backgroundColor: Colors.white,
         foregroundColor: AppTheme.darkText,
         elevation: 0,
@@ -56,11 +68,15 @@ class _PersonalReportPageState extends State<PersonalReportPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error_outline_rounded, size: 48, color: AppTheme.error),
+                    const Icon(Icons.error_outline_rounded,
+                        size: 48, color: AppTheme.error),
                     const SizedBox(height: 12),
-                    Text(_error!, style: const TextStyle(fontFamily: 'Poppins', color: AppTheme.grayText)),
+                    Text(_error!,
+                        style: const TextStyle(
+                            fontFamily: 'Poppins', color: AppTheme.grayText)),
                     const SizedBox(height: 16),
-                    ElevatedButton(onPressed: _load, child: const Text('Retry')),
+                    ElevatedButton(
+                        onPressed: _load, child: const Text('Retry')),
                   ],
                 ),
               )
@@ -80,7 +96,8 @@ class _PersonalReportPageState extends State<PersonalReportPage> {
                           Expanded(
                             child: _StatCard(
                               label: 'Total Contributed',
-                              value: 'ETB ${_fmt(_summary['total_contributed'] ?? 0)}',
+                              value:
+                                  'ETB ${_fmt(_summary['total_contributed'] ?? 0)}',
                               icon: Icons.arrow_upward_rounded,
                               color: AppTheme.error,
                             ),
@@ -89,7 +106,8 @@ class _PersonalReportPageState extends State<PersonalReportPage> {
                           Expanded(
                             child: _StatCard(
                               label: 'Total Received',
-                              value: 'ETB ${_fmt(_summary['total_received'] ?? 0)}',
+                              value:
+                                  'ETB ${_fmt(_summary['total_payouts_received'] ?? _summary['total_received'] ?? 0)}',
                               icon: Icons.arrow_downward_rounded,
                               color: AppTheme.success,
                             ),
@@ -102,7 +120,8 @@ class _PersonalReportPageState extends State<PersonalReportPage> {
                           Expanded(
                             child: _StatCard(
                               label: 'Active Groups',
-                              value: '${_summary['active_group_count'] ?? 0}',
+                              value:
+                                  '${(_summary['group_stats'] is Map ? _summary['group_stats']['active_groups'] : _summary['active_group_count']) ?? 0}',
                               icon: Icons.group_rounded,
                               color: AppTheme.primary,
                             ),
@@ -111,7 +130,8 @@ class _PersonalReportPageState extends State<PersonalReportPage> {
                           Expanded(
                             child: _StatCard(
                               label: 'Completed',
-                              value: '${_summary['completed_group_count'] ?? 0}',
+                              value:
+                                  '${(_summary['group_stats'] is Map ? _summary['group_stats']['completed_groups'] : _summary['completed_group_count']) ?? 0}',
                               icon: Icons.check_circle_rounded,
                               color: AppTheme.secondary,
                             ),
@@ -119,29 +139,49 @@ class _PersonalReportPageState extends State<PersonalReportPage> {
                         ],
                       ),
                       const SizedBox(height: 24),
-                      const Text('Export Report', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 15, color: AppTheme.darkText)),
+                      const Text('Export Report',
+                          style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                              color: AppTheme.darkText)),
                       const SizedBox(height: 12),
                       GestureDetector(
-                        onTap: () => Navigator.pushNamed(context, '/reports/export'),
+                        onTap: () =>
+                            Navigator.pushNamed(context, '/reports/export'),
                         child: Container(
                           padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: [AppTheme.primary, Color(0xFFEA580C)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                            gradient: const LinearGradient(
+                                colors: [AppTheme.primary, Color(0xFFEA580C)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Row(
                             children: const [
-                              Icon(Icons.download_rounded, color: Colors.white, size: 28),
+                              Icon(Icons.download_rounded,
+                                  color: Colors.white, size: 28),
                               SizedBox(width: 14),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Download Report', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15)),
-                                  Text('PDF or Excel format', style: TextStyle(fontFamily: 'Poppins', color: Colors.white70, fontSize: 12)),
+                                  Text('Download Report',
+                                      style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                          fontSize: 15)),
+                                  Text('PDF or Excel format',
+                                      style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          color: Colors.white70,
+                                          fontSize: 12)),
                                 ],
                               ),
                               Spacer(),
-                              Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 16),
+                              Icon(Icons.arrow_forward_ios_rounded,
+                                  color: Colors.white70, size: 16),
                             ],
                           ),
                         ),
@@ -173,17 +213,26 @@ class _WalletCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF1E293B), Color(0xFF334155)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        gradient: const LinearGradient(
+            colors: [Color(0xFF1E293B), Color(0xFF334155)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Wallet Balance', style: TextStyle(fontFamily: 'Poppins', color: Colors.white70, fontSize: 13)),
+          const Text('Wallet Balance',
+              style: TextStyle(
+                  fontFamily: 'Poppins', color: Colors.white70, fontSize: 13)),
           const SizedBox(height: 6),
           Text(
             'ETB ${double.tryParse(balance.toString())?.toStringAsFixed(2) ?? '0.00'}',
-            style: const TextStyle(fontFamily: 'Poppins', color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+                fontFamily: 'Poppins',
+                color: Colors.white,
+                fontSize: 30,
+                fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -196,7 +245,11 @@ class _StatCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
-  const _StatCard({required this.label, required this.value, required this.icon, required this.color});
+  const _StatCard(
+      {required this.label,
+      required this.value,
+      required this.icon,
+      required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -205,19 +258,36 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2))
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 38, height: 38,
-            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10)),
             child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(height: 10),
-          Text(value, style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.darkText)),
-          Text(label, style: const TextStyle(fontFamily: 'Poppins', color: AppTheme.grayText, fontSize: 11)),
+          Text(value,
+              style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: AppTheme.darkText)),
+          Text(label,
+              style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  color: AppTheme.grayText,
+                  fontSize: 11)),
         ],
       ),
     );

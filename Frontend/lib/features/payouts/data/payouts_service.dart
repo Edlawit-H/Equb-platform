@@ -10,29 +10,49 @@ class PayoutsService {
       if (status != null) 'status': status,
       'page': page,
     });
-    return res.data['data'];
+    return _unwrapData(res.data);
   }
 
   Future<Map<String, dynamic>> getHistory({int page = 1}) async {
     final res =
         await _dio.get('/payouts/history', queryParameters: {'page': page});
-    return res.data['data'];
+    return _unwrapData(res.data);
   }
 
   Future<Map<String, dynamic>> getSchedule() async {
     final res = await _dio.get('/payouts/schedule');
-    return res.data['data'];
+    return _unwrapData(res.data);
   }
 
   Future<Map<String, dynamic>> getById(String id) async {
     final res = await _dio.get('/payouts/$id');
-    return res.data['data'];
+    return _unwrapData(res.data);
   }
 
   Future<Map<String, dynamic>> getGroupPayouts(String groupId,
       {int page = 1}) async {
     final res = await _dio
         .get('/groups/$groupId/payouts', queryParameters: {'page': page});
-    return res.data['data'];
+    return _unwrapData(res.data);
+  }
+
+  Future<Map<String, dynamic>> approvePayout(String payoutId) async {
+    final res = await _dio.post('/payouts/$payoutId/approve');
+    return _unwrapData(res.data);
+  }
+
+  Future<Map<String, dynamic>> rejectPayout(String payoutId) async {
+    final res = await _dio.post('/payouts/$payoutId/reject');
+    return _unwrapData(res.data);
+  }
+
+  Map<String, dynamic> _unwrapData(dynamic data) {
+    if (data is Map) {
+      if (data['data'] is Map) {
+        return Map<String, dynamic>.from(data['data']);
+      }
+      return Map<String, dynamic>.from(data);
+    }
+    return <String, dynamic>{};
   }
 }

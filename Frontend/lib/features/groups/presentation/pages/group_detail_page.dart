@@ -3,6 +3,10 @@ import 'package:flutter/services.dart';
 import '../../data/group_service.dart';
 import '../../../contributions/data/contributions_service.dart';
 import '../../../reports/data/reports_service.dart';
+import '../../../reports/presentation/pages/export_report_page.dart';
+import '../../../wallet/data/wallet_service.dart';
+import '../../../payouts/presentation/pages/payout_history_page.dart';
+import '../../../payouts/presentation/pages/payout_schedule_page.dart';
 import '../../../profile/data/profile_service.dart';
 
 class GroupDetailsPage extends StatefulWidget {
@@ -27,6 +31,7 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
   Map<String, dynamic> _groupData = {};
   List<Map<String, dynamic>> _members = [];
   Map<String, dynamic> _groupSummary = {};
+  List<Map<String, dynamic>> _transactions = [];
   String? _currentUserId;
   bool _isLoading = true;
 
@@ -127,21 +132,16 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
 
     try {
       final futures = await Future.wait([
-        _groupService
-            .getGroupById(_groupId)
-            .catchError((_) => <String, dynamic>{}),
-        _groupService
-            .getGroupMembers(_groupId)
-            .catchError((_) => <String, dynamic>{}),
-        _reportsService
-            .getGroupSummary(_groupId)
-            .catchError((_) => <String, dynamic>{}),
+        _groupService.getGroupById(_groupId).catchError((_) => <String, dynamic>{}),
+        _groupService.getGroupMembers(_groupId).catchError((_) => <String, dynamic>{}),
+        _reportsService.getGroupSummary(_groupId).catchError((_) => <String, dynamic>{}),
       ]);
 
       final groupRes = futures[0];
       final membersRes = futures[1];
       final summaryRes = futures[2];
       final profileRes = futures[3];
+      final transactionsRes = futures[3];
 
       if (mounted) {
         setState(() {

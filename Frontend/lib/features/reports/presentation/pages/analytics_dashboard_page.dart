@@ -44,7 +44,8 @@ class _AnalyticsDashboardPageState extends State<AnalyticsDashboardPage> {
       if (mounted) {
         setState(() {
           _summary = results[0];
-          _monthly = List<Map<String, dynamic>>.from(results[1]['monthly_contributions'] ?? []);
+          _monthly = List<Map<String, dynamic>>.from(
+              results[1]['monthly_contributions'] ?? []);
           _loading = false;
         });
       }
@@ -61,20 +62,28 @@ class _AnalyticsDashboardPageState extends State<AnalyticsDashboardPage> {
   @override
   Widget build(BuildContext context) {
     final contributed = _summary['total_contributed'] ?? 0;
-    final payouts = _summary['total_received'] ?? 0;
+    final payouts =
+        _summary['total_payouts_received'] ?? _summary['total_received'] ?? 0;
     final balance = _summary['wallet_balance'] ?? 0;
     final paidCount = _summary['total_contributions_paid'] ?? 0;
 
-    final cVal = (contributed is num ? contributed.toDouble() : double.tryParse('$contributed') ?? 0.0);
-    final pVal = (payouts is num ? payouts.toDouble() : double.tryParse('$payouts') ?? 0.0);
-    final bVal = (balance is num ? balance.toDouble() : double.tryParse('$balance') ?? 0.0);
+    final cVal = (contributed is num
+        ? contributed.toDouble()
+        : double.tryParse('$contributed') ?? 0.0);
+    final pVal = (payouts is num
+        ? payouts.toDouble()
+        : double.tryParse('$payouts') ?? 0.0);
+    final bVal = (balance is num
+        ? balance.toDouble()
+        : double.tryParse('$balance') ?? 0.0);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text(
           'Financial Analytics',
-          style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w700, fontSize: 18),
+          style: TextStyle(
+              fontFamily: 'Poppins', fontWeight: FontWeight.w700, fontSize: 18),
         ),
         backgroundColor: Colors.white,
         foregroundColor: AppTheme.darkText,
@@ -90,7 +99,8 @@ class _AnalyticsDashboardPageState extends State<AnalyticsDashboardPage> {
                 color: AppTheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.file_download_outlined, color: AppTheme.primary, size: 20),
+              child: const Icon(Icons.file_download_outlined,
+                  color: AppTheme.primary, size: 20),
             ),
           ),
           const SizedBox(width: 8),
@@ -110,24 +120,34 @@ class _AnalyticsDashboardPageState extends State<AnalyticsDashboardPage> {
                 if (_error != null)
                   Container(
                     margin: const EdgeInsets.only(bottom: 16),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
                       color: AppTheme.error.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.error.withValues(alpha: 0.2)),
+                      border: Border.all(
+                          color: AppTheme.error.withValues(alpha: 0.2)),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.info_outline_rounded, color: AppTheme.error, size: 18),
+                        const Icon(Icons.info_outline_rounded,
+                            color: AppTheme.error, size: 18),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(_error!,
-                              style: const TextStyle(fontFamily: 'Poppins', color: AppTheme.error, fontSize: 12)),
+                              style: const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  color: AppTheme.error,
+                                  fontSize: 12)),
                         ),
                         TextButton(
                           onPressed: _load,
                           child: const Text('Retry',
-                              style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: AppTheme.error, fontSize: 12)),
+                              style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.error,
+                                  fontSize: 12)),
                         )
                       ],
                     ),
@@ -221,10 +241,15 @@ class _OverviewHeroCard extends StatelessWidget {
             children: [
               const Text(
                 'Total Savings Turnover',
-                style: TextStyle(color: Color(0xFF94A3B8), fontFamily: 'Poppins', fontSize: 13, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                    color: Color(0xFF94A3B8),
+                    fontFamily: 'Poppins',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppTheme.primary.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
@@ -232,9 +257,15 @@ class _OverviewHeroCard extends StatelessWidget {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.auto_graph_rounded, color: Color(0xFFFF8A48), size: 13),
+                    Icon(Icons.auto_graph_rounded,
+                        color: Color(0xFFFF8A48), size: 13),
                     SizedBox(width: 4),
-                    Text('Live Stats', style: TextStyle(color: Color(0xFFFF8A48), fontSize: 11, fontWeight: FontWeight.w600, fontFamily: 'Poppins')),
+                    Text('Live Stats',
+                        style: TextStyle(
+                            color: Color(0xFFFF8A48),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'Poppins')),
                   ],
                 ),
               ),
@@ -262,11 +293,22 @@ class _OverviewHeroCard extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _miniStat('Contributed', 'ETB ${totalContributed.toStringAsFixed(0)}', const Color(0xFFF87171)),
-                Container(height: 24, width: 1, color: Colors.white.withValues(alpha: 0.12)),
-                _miniStat('Received', 'ETB ${totalPayouts.toStringAsFixed(0)}', const Color(0xFF4ADE80)),
-                Container(height: 24, width: 1, color: Colors.white.withValues(alpha: 0.12)),
-                _miniStat('In Wallet', 'ETB ${balance.toStringAsFixed(0)}', const Color(0xFF60A5FA)),
+                _miniStat(
+                    'Contributed',
+                    'ETB ${totalContributed.toStringAsFixed(0)}',
+                    const Color(0xFFF87171)),
+                Container(
+                    height: 24,
+                    width: 1,
+                    color: Colors.white.withValues(alpha: 0.12)),
+                _miniStat('Received', 'ETB ${totalPayouts.toStringAsFixed(0)}',
+                    const Color(0xFF4ADE80)),
+                Container(
+                    height: 24,
+                    width: 1,
+                    color: Colors.white.withValues(alpha: 0.12)),
+                _miniStat('In Wallet', 'ETB ${balance.toStringAsFixed(0)}',
+                    const Color(0xFF60A5FA)),
               ],
             ),
           ),
@@ -278,9 +320,16 @@ class _OverviewHeroCard extends StatelessWidget {
   Widget _miniStat(String label, String value, Color color) {
     return Column(
       children: [
-        Text(value, style: TextStyle(color: color, fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 13)),
+        Text(value,
+            style: TextStyle(
+                color: color,
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.bold,
+                fontSize: 13)),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(color: Color(0xFF94A3B8), fontFamily: 'Poppins', fontSize: 11)),
+        Text(label,
+            style: const TextStyle(
+                color: Color(0xFF94A3B8), fontFamily: 'Poppins', fontSize: 11)),
       ],
     );
   }
@@ -475,7 +524,8 @@ class _MonthlyTrendChart extends StatelessWidget {
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(8),
@@ -506,17 +556,25 @@ class _MonthlyTrendChart extends StatelessWidget {
                       shape: BoxShape.circle,
                       border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
-                    child: const Icon(Icons.insert_chart_outlined_rounded, size: 28, color: Color(0xFF94A3B8)),
+                    child: const Icon(Icons.insert_chart_outlined_rounded,
+                        size: 28, color: Color(0xFF94A3B8)),
                   ),
                   const SizedBox(height: 10),
                   const Text(
                     'No contribution history yet',
-                    style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF334155)),
+                    style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: Color(0xFF334155)),
                   ),
                   const SizedBox(height: 4),
                   const Text(
                     'Your monthly savings chart will populate as you contribute.',
-                    style: TextStyle(fontFamily: 'Poppins', color: Color(0xFF94A3B8), fontSize: 11),
+                    style: TextStyle(
+                        fontFamily: 'Poppins',
+                        color: Color(0xFF94A3B8),
+                        fontSize: 11),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -533,7 +591,8 @@ class _MonthlyTrendChart extends StatelessWidget {
                     touchTooltipData: BarTouchTooltipData(
                       getTooltipColor: (_) => const Color(0xFF0F172A),
                       tooltipRoundedRadius: 8,
-                      tooltipPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      tooltipPadding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
                       getTooltipItem: (group, groupIndex, rod, rodIndex) {
                         return BarTooltipItem(
                           'ETB ${rod.toY.toStringAsFixed(0)}',
@@ -549,7 +608,9 @@ class _MonthlyTrendChart extends StatelessWidget {
                   ),
                   barGroups: monthly.asMap().entries.map((e) {
                     final a = e.value['total_amount'];
-                    final val = (a is num ? a.toDouble() : double.tryParse('$a') ?? 0.0);
+                    final val = (a is num
+                        ? a.toDouble()
+                        : double.tryParse('$a') ?? 0.0);
                     return BarChartGroupData(
                       x: e.key,
                       barRods: [
@@ -561,15 +622,19 @@ class _MonthlyTrendChart extends StatelessWidget {
                             end: Alignment.topCenter,
                           ),
                           width: 16,
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                          borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(6)),
                         ),
                       ],
                     );
                   }).toList(),
                   titlesData: FlTitlesData(
-                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    leftTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
@@ -577,7 +642,11 @@ class _MonthlyTrendChart extends StatelessWidget {
                         getTitlesWidget: (val, _) {
                           final idx = val.toInt();
                           if (idx >= 0 && idx < monthly.length) {
-                            final m = monthly[idx]['month']?.toString().split('-').last ?? '';
+                            final m = monthly[idx]['month']
+                                    ?.toString()
+                                    .split('-')
+                                    .last ??
+                                '';
                             return Padding(
                               padding: const EdgeInsets.only(top: 6),
                               child: Text(
@@ -622,9 +691,14 @@ class _GroupParticipationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final active = summary['active_group_count'] ?? 0;
-    final completed = summary['completed_group_count'] ?? 0;
-    final total = active + completed;
+    final groupStats = summary['group_stats'] is Map
+        ? Map<String, dynamic>.from(summary['group_stats'])
+        : <String, dynamic>{};
+    final active =
+        groupStats['active_groups'] ?? summary['active_group_count'] ?? 0;
+    final completed =
+        groupStats['completed_groups'] ?? summary['completed_group_count'] ?? 0;
+    final total = groupStats['total_groups_joined'] ?? (active + completed);
     final progress = total > 0 ? (completed / total) : 0.0;
 
     return Container(
@@ -675,7 +749,8 @@ class _GroupParticipationCard extends StatelessWidget {
                         ),
                       ),
                       SizedBox(width: 4),
-                      Icon(Icons.arrow_forward_ios_rounded, size: 11, color: AppTheme.primary),
+                      Icon(Icons.arrow_forward_ios_rounded,
+                          size: 11, color: AppTheme.primary),
                     ],
                   ),
                 ),
@@ -690,7 +765,8 @@ class _GroupParticipationCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: progress.clamp(0.0, 1.0),
               backgroundColor: const Color(0xFFF1F5F9),
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF16A34A)),
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(Color(0xFF16A34A)),
               minHeight: 8,
             ),
           ),
@@ -724,7 +800,8 @@ class _GroupParticipationCard extends StatelessWidget {
     );
   }
 
-  Widget _statLine(String label, String value, {required IconData icon, required Color iconColor, Color? valueColor}) {
+  Widget _statLine(String label, String value,
+      {required IconData icon, required Color iconColor, Color? valueColor}) {
     return Row(
       children: [
         Icon(icon, size: 16, color: iconColor),

@@ -10,7 +10,8 @@ class WalletService {
   }
 
   Future<Map<String, dynamic>> topUp(double amount) async {
-    final res = await _dio.post('/transactions/top-up', data: {'amount': amount});
+    final res =
+        await _dio.post('/transactions/top-up', data: {'amount': amount});
     return res.data['data'];
   }
 
@@ -36,6 +37,15 @@ class WalletService {
 
   Future<Map<String, dynamic>> getTransactionStats() async {
     final res = await _dio.get('/transactions/stats');
+    return res.data['data'];
+  }
+
+  Future<Map<String, dynamic>> getGroupTransactions(String groupId,
+      {int page = 1}) async {
+    final res = await _dio.get(
+      '/transactions/group/$groupId',
+      queryParameters: {'page': page},
+    );
     return res.data['data'];
   }
 }

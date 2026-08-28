@@ -18,10 +18,8 @@ router.get("/:groupId/members",protect,groupController.getGroupMembers);
 router.patch("/:groupId",protect,groupController.updateGroup);
 router.delete("/:groupId",protect,groupController.deleteGroup);
 router.post("/:groupId/start",protect,groupController.startGroup);
-// GET /api/v1/groups/:id/contributions — all contributions for a group (Edlawit-owned)
+// Contributions & Payouts for a group
 router.get('/:id/contributions', getGroupContributions);
-
-// GET /api/v1/groups/:id/payouts — all payouts for a group (Edlawit-owned)
 router.get('/:id/payouts', getGroupPayouts);
 
 export default router;
