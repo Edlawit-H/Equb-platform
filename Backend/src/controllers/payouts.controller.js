@@ -241,12 +241,18 @@ export const getGroupPayouts = asyncWrapper(async (req, res) => {
 
   if (req.userRole !== 'system_admin') {
     const { rows: memberCheck } = await pool.query(
-      `SELECT member_id FROM group_members
-       WHERE user_id = $1 AND group_id = $2 AND status = 'active'`,
+      `SELECT gm.member_id FROM group_members gm
+       WHERE gm.user_id = $1 AND gm.group_id = $2 AND gm.status = 'active'`,
       [req.userId, groupId]
     );
     if (memberCheck.length === 0) {
-      throw new AppError('You are not a member of this group', 403);
+      const { rows: adminCheck } = await pool.query(
+        `SELECT group_id FROM equb_groups WHERE group_id = $1 AND admin_id = $2`,
+        [groupId, req.userId]
+      );
+      if (adminCheck.length === 0) {
+        throw new AppError('You are not a member of this group', 403);
+      }
     }
   }
 
