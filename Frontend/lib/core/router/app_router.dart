@@ -49,7 +49,7 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
 
   Widget page;
 
-  // Entry & Auth Routes (Etsub)
+  // Entry & Auth Routes
   if (name == '/' || name == '/splash') {
     page = const SplashPage();
   } else if (name == '/onboarding') {
@@ -67,7 +67,7 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
   } else if (name == '/biometric-setup') {
     page = const BiometricSetupPage();
   }
-  // Group Management Routes (Etsub)
+  // Group Management Routes
   else if (name == '/groups') {
     page = const GroupsPage();
   } else if (name == '/groups/create') {
@@ -87,7 +87,7 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
   } else if (name == '/groups/invite') {
     page = const InviteMembersPage();
   }
-  // User Profile Routes (Etsub)
+  // User Profile Routes
   else if (name == '/profile') {
     page = const ProfilePage();
   } else if (name == '/profile/edit') {
@@ -95,7 +95,7 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
   } else if (name == '/change-password') {
     page = const ChangePasswordPage();
   }
-  // Notification Routes (Etsub)
+  // Notification Routes
   else if (name == '/notifications') {
     page = const NotificationsPage();
   } else if (name == '/notifications/detail') {

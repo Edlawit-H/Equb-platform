@@ -37,10 +37,13 @@ class _PayoutHistoryPageState extends State<PayoutHistoryPage> {
       _error = null;
     });
     try {
-      final data = widget.groupId != null
+      final data = (widget.groupId != null && widget.groupId!.isNotEmpty)
           ? await _service.getGroupPayouts(widget.groupId!)
           : await _service.getHistory();
-      final list = List<Map<String, dynamic>>.from(data['payouts'] ?? []);
+
+      final dynamic payoutsRaw = data['payouts'] ?? data['data']?['payouts'] ?? (data['data'] is List ? data['data'] : null);
+      final list = payoutsRaw is List ? List<Map<String, dynamic>>.from(payoutsRaw) : <Map<String, dynamic>>[];
+
       if (mounted) {
         setState(() {
           _payouts = list;
@@ -48,6 +51,7 @@ class _PayoutHistoryPageState extends State<PayoutHistoryPage> {
         });
       }
     } catch (e) {
+      debugPrint("Error loading payout history: $e");
       if (mounted) {
         setState(() {
           _loading = false;

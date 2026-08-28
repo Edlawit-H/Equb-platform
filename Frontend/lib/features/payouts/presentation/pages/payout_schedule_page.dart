@@ -112,17 +112,22 @@ class _PayoutSchedulePageState extends State<PayoutSchedulePage> {
       _payoutsService.getGroupPayouts(groupId).catchError((_) => <String, dynamic>{}),
     ]);
 
-    final group = Map<String, dynamic>.from(results[0]['data'] ?? {});
-    final members = List<Map<String, dynamic>>.from(results[1]['data'] ?? []);
-    final payouts = List<Map<String, dynamic>>.from(results[2]['payouts'] ?? []);
+    final dynamic groupRaw = results[0]['data'] ?? results[0];
+    final group = groupRaw is Map ? Map<String, dynamic>.from(groupRaw) : <String, dynamic>{};
 
-    final totalCycles = _asInt(group['total_cycles']) ?? _asInt(group['max_members']) ?? members.length;
+    final dynamic membersRaw = results[1]['data'] ?? results[1];
+    final members = membersRaw is List ? List<Map<String, dynamic>>.from(membersRaw) : <Map<String, dynamic>>[];
+
+    final dynamic payoutsRaw = results[2]['payouts'] ?? results[2]['data']?['payouts'] ?? (results[2]['data'] is List ? results[2]['data'] : null);
+    final payouts = payoutsRaw is List ? List<Map<String, dynamic>>.from(payoutsRaw) : <Map<String, dynamic>>[];
+
+    final totalCycles = _asInt(group['total_cycles']) ?? _asInt(group['max_members']) ?? (members.isNotEmpty ? members.length : 1);
     final currentCycle = _asInt(group['current_cycle']) ?? 1;
     final cycleDuration = _asInt(group['cycle_duration']) ?? 7;
     final contribAmount = group['contribution_amount'] is num
         ? (group['contribution_amount'] as num).toDouble()
         : double.tryParse('${group['contribution_amount']}') ?? 0.0;
-    final estPayout = contribAmount * (members.isNotEmpty ? members.length : totalCycles);
+    final estPayout = contribAmount * (members.isNotEmpty ? members.length : (totalCycles > 0 ? totalCycles : 1));
 
     final startDateStr = group['start_date']?.toString();
     final startDate = startDateStr != null ? DateTime.tryParse(startDateStr) : null;
@@ -569,48 +574,46 @@ class _ScheduleTimelineNode extends StatelessWidget {
     final amount = item['estimated_payout_amount'] ?? 0;
     final numAmount = amount is num ? amount.toDouble() : double.tryParse('$amount') ?? 0.0;
 
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Timeline indicator line + circle node
-          SizedBox(
-            width: 36,
-            child: Column(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: nodeBg,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: statusColor,
-                      width: isCurrent ? 2.5 : 1.5,
-                    ),
-                  ),
-                  child: Center(
-                    child: Icon(statusIcon, color: statusColor, size: 16),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Timeline indicator line + circle node
+        SizedBox(
+          width: 36,
+          child: Column(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: nodeBg,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: statusColor,
+                    width: isCurrent ? 2.5 : 1.5,
                   ),
                 ),
-                if (!isLast)
-                  Expanded(
-                    child: Container(
-                      width: 2,
-                      color: isCompleted ? const Color(0xFF86EFAC) : const Color(0xFFE2E8F0),
-                    ),
-                  ),
-              ],
-            ),
+                child: Center(
+                  child: Icon(statusIcon, color: statusColor, size: 16),
+                ),
+              ),
+              if (!isLast)
+                Container(
+                  width: 2,
+                  height: 120,
+                  color: isCompleted ? const Color(0xFF86EFAC) : const Color(0xFFE2E8F0),
+                ),
+            ],
           ),
+        ),
 
-          const SizedBox(width: 12),
+        const SizedBox(width: 12),
 
-          // Payout Card
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: GestureDetector(
+        // Payout Card
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: GestureDetector(
                 onTap: onTap,
                 child: Container(
                   padding: const EdgeInsets.all(16),
@@ -757,7 +760,6 @@ class _ScheduleTimelineNode extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
+      );
   }
 }

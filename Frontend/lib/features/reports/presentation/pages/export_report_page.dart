@@ -1,7 +1,5 @@
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
-
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/error_snackbar.dart';
 import '../../data/reports_service.dart';
@@ -22,37 +20,27 @@ class _ExportReportPageState extends State<ExportReportPage> {
   bool _pdfDone = false;
   bool _excelDone = false;
 
-  /// Opens an authenticated URL in the browser — this triggers a native Chrome download
-  /// because the backend responds with Content-Disposition: attachment.
-  void _triggerDownload(String url, String filename) {
-    final anchor = html.AnchorElement(href: url)
-      ..setAttribute('download', filename)
-      ..style.display = 'none';
-    html.document.body!.append(anchor);
-    anchor.click();
-    anchor.remove();
-  }
-
   Future<void> _exportPdf() async {
     setState(() => _loadingPdf = true);
     try {
       final url = widget.groupId == null
           ? await _service.getExportUrl('/reports/export/pdf')
           : await _service.getGroupExportUrl(widget.groupId!, excel: false);
-      _triggerDownload(
-          url,
-          widget.groupId == null
-              ? 'equb_financial_report.txt'
-              : 'equb_group_report.txt');
-      if (mounted)
+      
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+      if (mounted) {
         setState(() {
           _pdfDone = true;
           _loadingPdf = false;
         });
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _loadingPdf = false);
-        ErrorSnackbar.show(context, 'Report export failed');
+        ErrorSnackbar.show(context, 'Report export failed: ${e.toString().replaceAll("Exception: ", "")}');
       }
     }
   }
@@ -63,16 +51,21 @@ class _ExportReportPageState extends State<ExportReportPage> {
       final url = widget.groupId == null
           ? await _service.getExportUrl('/reports/export/excel')
           : await _service.getGroupExportUrl(widget.groupId!, excel: true);
-      _triggerDownload(url, 'financial_report.csv');
-      if (mounted)
+      
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+      if (mounted) {
         setState(() {
           _excelDone = true;
           _loadingExcel = false;
         });
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _loadingExcel = false);
-        ErrorSnackbar.show(context, 'Export failed');
+        ErrorSnackbar.show(context, 'Export failed: ${e.toString().replaceAll("Exception: ", "")}');
       }
     }
   }
