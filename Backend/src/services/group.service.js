@@ -165,8 +165,17 @@ export async function joinGroup(groupIdOrCode, userId) {
     const group = rows[0];
     const groupId = group.group_id;
 
-    if (group.status === 'active' || group.status === 'completed') {
+    if (group.status === 'active' || group.status === 'completed' ||
+        (group.start_date && new Date(group.start_date) <= new Date())) {
         throw new Error("Cannot join a group that has already started");
+    }
+
+    const { rows: payoutRows } = await pool.query(
+        `SELECT 1 FROM payouts WHERE group_id = $1 LIMIT 1`,
+        [groupId]
+    );
+    if (payoutRows.length > 0) {
+        throw new Error("Cannot join a group after a payout has been issued");
     }
 
     if (await isMember(userId, groupId)) {

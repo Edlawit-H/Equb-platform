@@ -17,7 +17,8 @@ class GroupDetailsPage extends StatefulWidget {
   State<GroupDetailsPage> createState() => _GroupDetailsPageState();
 }
 
-class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerProviderStateMixin {
+class _GroupDetailsPageState extends State<GroupDetailsPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _groupService = GroupService();
   final _reportsService = ReportsService();
@@ -83,7 +84,9 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
       0;
 
   String get _groupStatus =>
-      (_groupData["status"] ?? widget.group?["status"] ?? "ACTIVE").toString().toUpperCase();
+      (_groupData["status"] ?? widget.group?["status"] ?? "ACTIVE")
+          .toString()
+          .toUpperCase();
 
   int get _maxMembers {
     final val = _groupData["max_members"] ?? widget.group?["max_members"] ?? 0;
@@ -124,10 +127,15 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
 
     try {
       final futures = await Future.wait([
-        _groupService.getGroupById(_groupId).catchError((_) => <String, dynamic>{}),
-        _groupService.getGroupMembers(_groupId).catchError((_) => <String, dynamic>{}),
-        _reportsService.getGroupSummary(_groupId).catchError((_) => <String, dynamic>{}),
-        ProfileService.getProfile().catchError((_) => <String, dynamic>{}),
+        _groupService
+            .getGroupById(_groupId)
+            .catchError((_) => <String, dynamic>{}),
+        _groupService
+            .getGroupMembers(_groupId)
+            .catchError((_) => <String, dynamic>{}),
+        _reportsService
+            .getGroupSummary(_groupId)
+            .catchError((_) => <String, dynamic>{}),
       ]);
 
       final groupRes = futures[0];
@@ -164,8 +172,10 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
     }
   }
 
-  void _showContributionModal(BuildContext context, String groupName, dynamic amount) {
-    final numAmount = amount is num ? amount.toDouble() : double.tryParse('$amount') ?? 0.0;
+  void _showContributionModal(
+      BuildContext context, String groupName, dynamic amount) {
+    final numAmount =
+        amount is num ? amount.toDouble() : double.tryParse('$amount') ?? 0.0;
     bool isPaying = false;
 
     showModalBottomSheet(
@@ -219,11 +229,13 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFF7ED),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: primaryOrange.withValues(alpha: 0.2)),
+                  border:
+                      Border.all(color: primaryOrange.withValues(alpha: 0.2)),
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.account_balance_wallet_rounded, color: primaryOrange),
+                    Icon(Icons.account_balance_wallet_rounded,
+                        color: primaryOrange),
                     SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -231,11 +243,17 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                         children: [
                           Text(
                             "Payment Method",
-                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, fontFamily: 'Poppins'),
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                fontFamily: 'Poppins'),
                           ),
                           Text(
                             "Equb Digital Wallet Balance",
-                            style: TextStyle(color: textMuted, fontSize: 12, fontFamily: 'Poppins'),
+                            style: TextStyle(
+                                color: textMuted,
+                                fontSize: 12,
+                                fontFamily: 'Poppins'),
                           ),
                         ],
                       ),
@@ -255,7 +273,9 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                           setModalState(() => isPaying = true);
                           try {
                             final cycle = widget.group?["current_cycle"] ?? 1;
-                            final cycleNum = cycle is int ? cycle : int.tryParse('$cycle') ?? 1;
+                            final cycleNum = cycle is int
+                                ? cycle
+                                : int.tryParse('$cycle') ?? 1;
                             await _contributionsService.pay(_groupId, cycleNum);
 
                             if (!context.mounted) return;
@@ -264,7 +284,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
 
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text("Contribution of ETB ${numAmount.toStringAsFixed(2)} completed!"),
+                                content: Text(
+                                    "Contribution of ETB ${numAmount.toStringAsFixed(2)} completed!"),
                                 backgroundColor: const Color(0xFF16A34A),
                               ),
                             );
@@ -272,7 +293,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                             setModalState(() => isPaying = false);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text(e.toString().replaceAll("Exception: ", "")),
+                                content: Text(
+                                    e.toString().replaceAll("Exception: ", "")),
                                 backgroundColor: const Color(0xFFDC2626),
                               ),
                             );
@@ -290,11 +312,15 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                       ? const SizedBox(
                           width: 22,
                           height: 22,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2),
                         )
                       : const Text(
                           "Confirm & Pay",
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, fontFamily: 'Poppins'),
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'Poppins'),
                         ),
                 ),
               ),
@@ -345,13 +371,15 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
           actions: [
             if (inviteCode.isNotEmpty)
               IconButton(
-                icon: const Icon(Icons.share_rounded, color: Colors.white, size: 20),
+                icon: const Icon(Icons.share_rounded,
+                    color: Colors.white, size: 20),
                 tooltip: "Invitation Code: $inviteCode",
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: inviteCode));
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text("Invitation code '$inviteCode' copied to clipboard!"),
+                      content: Text(
+                          "Invitation code '$inviteCode' copied to clipboard!"),
                       backgroundColor: primaryOrange,
                     ),
                   );
@@ -390,7 +418,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
   }
 
   /// Top Group Overview Card
-  Widget _buildGroupOverviewCard(String title, String amount, String inviteCode) {
+  Widget _buildGroupOverviewCard(
+      String title, String amount, String inviteCode) {
     final status = _groupStatus;
     final isPending = status == "PENDING";
 
@@ -455,7 +484,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        const Icon(Icons.people_outline_rounded, size: 14, color: textMuted),
+                        const Icon(Icons.people_outline_rounded,
+                            size: 14, color: textMuted),
                         const SizedBox(width: 4),
                         Text(
                           "${_members.isNotEmpty ? _members.length : (_groupData["current_members"] ?? _groupData["member_count"] ?? 1)} / ${_maxMembers > 0 ? _maxMembers : 10} Members",
@@ -472,11 +502,14 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: isPending ? const Color(0xFFFFF7ED) : activeGreenBg,
                   borderRadius: BorderRadius.circular(8),
-                  border: isPending ? Border.all(color: primaryOrange.withValues(alpha: 0.3)) : null,
+                  border: isPending
+                      ? Border.all(color: primaryOrange.withValues(alpha: 0.3))
+                      : null,
                 ),
                 child: Text(
                   status,
@@ -547,7 +580,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                       Clipboard.setData(ClipboardData(text: inviteCode));
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text("Invitation code '$inviteCode' copied!"),
+                          content:
+                              Text("Invitation code '$inviteCode' copied!"),
                           backgroundColor: const Color(0xFF16A34A),
                           duration: const Duration(seconds: 2),
                         ),
@@ -555,7 +589,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                     },
                     borderRadius: BorderRadius.circular(8),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: primaryOrange,
                         borderRadius: BorderRadius.circular(8),
@@ -563,7 +598,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.copy_rounded, size: 14, color: Colors.white),
+                          Icon(Icons.copy_rounded,
+                              size: 14, color: Colors.white),
                           SizedBox(width: 4),
                           Text(
                             "Copy",
@@ -638,14 +674,19 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
               const SizedBox(height: 12),
               const Text(
                 "No members joined yet",
-                style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16, color: textDark),
+                style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: textDark),
               ),
               if (_inviteCode.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
                   "Share code '$_inviteCode' to invite members.",
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontFamily: 'Poppins', color: textMuted, fontSize: 13),
+                  style: const TextStyle(
+                      fontFamily: 'Poppins', color: textMuted, fontSize: 13),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
@@ -663,7 +704,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryOrange,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ],
@@ -693,7 +735,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
             ),
             child: Row(
               children: [
-                const Icon(Icons.person_add_alt_1_rounded, color: primaryOrange, size: 22),
+                const Icon(Icons.person_add_alt_1_rounded,
+                    color: primaryOrange, size: 22),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -764,7 +807,10 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                 backgroundColor: const Color(0xFFFFF7ED),
                 child: Text(
                   name.isNotEmpty ? name[0].toUpperCase() : "M",
-                  style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: primaryOrange),
+                  style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.bold,
+                      color: primaryOrange),
                 ),
               ),
               const SizedBox(width: 12),
@@ -820,7 +866,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
     final totalCollected = _groupSummary["total_collected"] ?? 0;
     final totalPaidOut = _groupSummary["total_paid_out"] ?? 0;
     final remainingCycles = _groupSummary["remaining_cycles"] ?? 0;
-    final completionPct = (_groupSummary["cycle_completion_percentage"] ?? 0).toDouble();
+    final completionPct =
+        (_groupSummary["cycle_completion_percentage"] ?? 0).toDouble();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -830,11 +877,13 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
           Row(
             children: [
               Expanded(
-                child: _summaryCard("Total Pool", "ETB $totalCollected", Icons.savings_rounded, const Color(0xFF16A34A)),
+                child: _summaryCard("Total Pool", "ETB $totalCollected",
+                    Icons.savings_rounded, const Color(0xFF16A34A)),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _summaryCard("Total Paid Out", "ETB $totalPaidOut", Icons.send_rounded, primaryOrange),
+                child: _summaryCard("Total Paid Out", "ETB $totalPaidOut",
+                    Icons.send_rounded, primaryOrange),
               ),
             ],
           ),
@@ -852,20 +901,31 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Cycle Completion", style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 14)),
-                    Text("${completionPct.toInt()}%", style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: primaryOrange)),
+                    const Text("Cycle Completion",
+                        style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14)),
+                    Text("${completionPct.toInt()}%",
+                        style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.bold,
+                            color: primaryOrange)),
                   ],
                 ),
                 const SizedBox(height: 8),
                 LinearProgressIndicator(
                   value: completionPct / 100,
                   backgroundColor: const Color(0xFFE2E8F0),
-                  valueColor: const AlwaysStoppedAnimation<Color>(primaryOrange),
+                  valueColor:
+                      const AlwaysStoppedAnimation<Color>(primaryOrange),
                   minHeight: 8,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 const SizedBox(height: 8),
-                Text("Remaining cycles: $remainingCycles", style: const TextStyle(fontFamily: 'Poppins', color: textMuted, fontSize: 12)),
+                Text("Remaining cycles: $remainingCycles",
+                    style: const TextStyle(
+                        fontFamily: 'Poppins', color: textMuted, fontSize: 12)),
               ],
             ),
           ),
@@ -887,8 +947,15 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
         children: [
           Icon(icon, color: color, size: 22),
           const SizedBox(height: 8),
-          Text(value, style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16, color: textDark)),
-          Text(title, style: const TextStyle(fontFamily: 'Poppins', color: textMuted, fontSize: 12)),
+          Text(value,
+              style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: textDark)),
+          Text(title,
+              style: const TextStyle(
+                  fontFamily: 'Poppins', color: textMuted, fontSize: 12)),
         ],
       ),
     );
@@ -904,7 +971,10 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
           children: [
             Icon(Icons.history_rounded, size: 40, color: textMuted),
             SizedBox(height: 8),
-            Text("Activity is recorded in real time for every cycle round.", textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Poppins', color: textMuted, fontSize: 13)),
+            Text("Activity is recorded in real time for every cycle round.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontFamily: 'Poppins', color: textMuted, fontSize: 13)),
           ],
         ),
       ),
@@ -945,14 +1015,18 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
         ),
         content: Text(
           "Starting this group will begin Cycle #1 for all $memberCount members and generate initial contribution schedules.\n\nAre you sure you want to start now?",
-          style: const TextStyle(fontFamily: 'Poppins', fontSize: 13.5, color: textDark),
+          style: const TextStyle(
+              fontFamily: 'Poppins', fontSize: 13.5, color: textDark),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text(
               "Cancel",
-              style: TextStyle(fontFamily: 'Poppins', color: textMuted, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                  fontFamily: 'Poppins',
+                  color: textMuted,
+                  fontWeight: FontWeight.w600),
             ),
           ),
           ElevatedButton(
@@ -960,11 +1034,13 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryOrange,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
             child: const Text(
               "Start Group",
-              style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold),
+              style:
+                  TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -981,7 +1057,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(res["message"] ?? "Group started successfully! Cycle 1 has begun."),
+          content: Text(res["message"] ??
+              "Group started successfully! Cycle 1 has begun."),
           backgroundColor: const Color(0xFF16A34A),
         ),
       );
@@ -1073,15 +1150,19 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
                 ? null
                 : (isPending
                     ? _handleStartGroup
-                    : () => _showContributionModal(context, groupTitle, amount)),
+                    : () =>
+                        _showContributionModal(context, groupTitle, amount)),
             icon: _isStarting
                 ? const SizedBox(
                     width: 18,
                     height: 18,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2),
                   )
                 : Icon(
-                    isPending ? Icons.play_arrow_rounded : Icons.payments_rounded,
+                    isPending
+                        ? Icons.play_arrow_rounded
+                        : Icons.payments_rounded,
                     color: Colors.white,
                     size: 22,
                   ),
@@ -1110,4 +1191,3 @@ class _GroupDetailsPageState extends State<GroupDetailsPage> with SingleTickerPr
     );
   }
 }
-

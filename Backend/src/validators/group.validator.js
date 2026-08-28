@@ -5,9 +5,9 @@ export const createGroupSchema = z.object({
     group_name: z.string().min(3).max(100),
     description: z.string().max(500).optional(),
     contribution_amount: z.number().positive(),
-    cycle_duration: z.union([z.literal(7), z.literal(14), z.literal(30)]),
+    cycle_duration: z.union([z.literal(1), z.literal(7), z.literal(14), z.literal(30)]),
     max_members: z.number().int().min(2).max(50),
-    selection_mode: z.enum(['positional', 'random']).default('positional'),
+    start_date: z.string().date().optional(),
   }),
 });
 

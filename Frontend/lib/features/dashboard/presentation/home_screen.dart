@@ -43,8 +43,12 @@ class _HomeScreenState extends State<HomeScreen> {
         GroupService().getGroups().catchError((_) => <String, dynamic>{}),
         ProfileService.getProfile().catchError((_) => <String, dynamic>{}),
         ReportsService().getDashboard().catchError((_) => <String, dynamic>{}),
-        ReportsService().getUserSummary().catchError((_) => <String, dynamic>{}),
-        ContributionsService().getPendingContributions().catchError((_) => <Map<String, dynamic>>[]),
+        ReportsService()
+            .getUserSummary()
+            .catchError((_) => <String, dynamic>{}),
+        ContributionsService()
+            .getPendingContributions()
+            .catchError((_) => <Map<String, dynamic>>[]),
       ]);
 
       final groupRes = futures[0] as Map<String, dynamic>;
@@ -53,13 +57,23 @@ class _HomeScreenState extends State<HomeScreen> {
       final summaryRes = futures[3] as Map<String, dynamic>;
       final pendingRes = futures[4] as List<Map<String, dynamic>>;
 
+      final groups = groupRes["data"] is List
+          ? List<Map<String, dynamic>>.from(groupRes["data"])
+          : <Map<String, dynamic>>[];
+      final memberResponses = await Future.wait(
+        groups.map((group) => GroupService()
+            .getGroupMembers(group["group_id"].toString())
+            .catchError((_) => <String, dynamic>{})),
+      );
+      for (var index = 0; index < groups.length; index++) {
+        final members = memberResponses[index]["data"];
+        groups[index]["actual_member_count"] =
+            members is List ? members.length : 0;
+      }
+
       if (mounted) {
         setState(() {
-          if (groupRes["data"] != null && groupRes["data"] is List) {
-            _groups = List<Map<String, dynamic>>.from(groupRes["data"]);
-          } else {
-            _groups = [];
-          }
+          _groups = groups;
 
           if (profileRes["data"] != null && profileRes["data"] is Map) {
             _userProfile = Map<String, dynamic>.from(profileRes["data"]);
@@ -68,9 +82,8 @@ class _HomeScreenState extends State<HomeScreen> {
           _dashboardData = dashboardRes.isNotEmpty
               ? (dashboardRes['data'] ?? dashboardRes)
               : null;
-          _summaryData = summaryRes.isNotEmpty
-              ? (summaryRes['data'] ?? summaryRes)
-              : null;
+          _summaryData =
+              summaryRes.isNotEmpty ? (summaryRes['data'] ?? summaryRes) : null;
           _pendingContributions = pendingRes;
 
           _isLoading = false;

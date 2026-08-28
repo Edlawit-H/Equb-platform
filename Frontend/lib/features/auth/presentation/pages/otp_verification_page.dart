@@ -121,7 +121,7 @@ class _OtpScreenState extends State<OtpScreen> {
   void verifyOtp() async {
     final otp = _otpCode.trim();
 
-    if (otp.length < otpLength) {
+    if (!RegExp(r'^\d{6}$').hasMatch(otp)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Please enter the complete 6-digit OTP code"),
@@ -136,14 +136,19 @@ class _OtpScreenState extends State<OtpScreen> {
     });
 
     try {
-      if (widget.phone.isNotEmpty) {
-        await ApiService.verifyRegistrationOTP(
-          fullName: widget.fullName,
-          phone: widget.phone,
-          password: widget.password,
-          otp: otp,
-        );
+      if (widget.phone.isEmpty ||
+          widget.fullName.isEmpty ||
+          widget.password.isEmpty) {
+        throw Exception(
+            "Registration details are missing. Please start registration again.");
       }
+
+      await ApiService.verifyRegistrationOTP(
+        fullName: widget.fullName,
+        phone: widget.phone,
+        password: widget.password,
+        otp: otp,
+      );
 
       if (!mounted) return;
 
@@ -400,7 +405,9 @@ class _OtpScreenState extends State<OtpScreen> {
           border: Border.all(
             color: isFocused
                 ? primaryColor
-                : (hasValue ? const Color(0xFF94A3B8) : const Color(0xFFE2E8F0)),
+                : (hasValue
+                    ? const Color(0xFF94A3B8)
+                    : const Color(0xFFE2E8F0)),
             width: isFocused ? 1.8 : 1.2,
           ),
           boxShadow: [
