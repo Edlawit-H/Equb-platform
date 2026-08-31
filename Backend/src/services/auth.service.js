@@ -82,7 +82,8 @@ export const registerUser = async (data) => {
   );
 
   return {
-    message: "OTP generated"
+    message: "OTP generated",
+    otp: otp,
   };
 
 };
@@ -293,7 +294,8 @@ export const resendRegistrationOTP = async (data) => {
   console.log("New OTP:", otp);
 
   return {
-    message: "OTP resent successfully"
+    message: "OTP resent successfully",
+    otp: otp,
   };
 };
 
@@ -345,7 +347,8 @@ export const requestPasswordReset = async (phone_number) => {
 
 
   return {
-    message: "OTP sent"
+    message: "OTP sent",
+    otp: otp,
   };
 
 };

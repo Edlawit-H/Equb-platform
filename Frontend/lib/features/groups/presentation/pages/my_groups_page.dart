@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import './group_detail_page.dart';
 import '../../data/group_service.dart';
+import '../../../dashboard/presentation/widgets/join_group_dialog.dart';
 
 class GroupsPage extends StatefulWidget {
   const GroupsPage({super.key});
@@ -15,13 +16,15 @@ class _GroupsPageState extends State<GroupsPage> {
   int _selectedTabIndex = 0; // 0 for Active, 1 for Completed
   List<Map<String, dynamic>> _groups = [];
   bool _isLoading = true;
+  String? _errorMessage;
 
-  static const Color headerColor = Color(0xFF9E3A00);
-  static const Color textDark = Color(0xFF0F172A);
-  static const Color textMuted = Color(0xFF64748B);
-  static const Color primaryBrown = Color(0xFF8D3606);
+  static const Color primaryOrange = Color(0xFFF97316);
+  static const Color headerOrange = Color(0xFFEA580C);
+  static const Color textDark = Color(0xFF111827);
+  static const Color textMuted = Color(0xFF6B7280);
   static const Color activeGreen = Color(0xFF16A34A);
   static const Color activeGreenBg = Color(0xFFDCFCE7);
+  static const Color borderColor = Color(0xFFE2E8F0);
 
   @override
   void initState() {
@@ -30,97 +33,131 @@ class _GroupsPageState extends State<GroupsPage> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     try {
-      final groupRes = await GroupService()
-          .getGroups()
-          .catchError((_) => <String, dynamic>{});
+      final groupRes = await GroupService().getGroups();
 
-      final groups = groupRes["data"] is List
-          ? List<Map<String, dynamic>>.from(groupRes["data"])
-          : <Map<String, dynamic>>[];
-      final memberResponses = await Future.wait(
-        groups.map((group) => GroupService()
-            .getGroupMembers(group["group_id"].toString())
-            .catchError((_) => <String, dynamic>{})),
-      );
-      for (var index = 0; index < groups.length; index++) {
-        final members = memberResponses[index]["data"];
-        groups[index]["actual_member_count"] =
-            members is List ? members.length : 0;
+      List<Map<String, dynamic>> groups = [];
+      if (groupRes["data"] is List) {
+        groups = List<Map<String, dynamic>>.from(groupRes["data"]);
+      } else if (groupRes["groups"] is List) {
+        groups = List<Map<String, dynamic>>.from(groupRes["groups"]);
+      } else if (groupRes is List) {
+        groups = List<Map<String, dynamic>>.from(groupRes as dynamic);
+      }
+
+      for (var g in groups) {
+        final current = g["current_members"] ?? g["member_count"] ?? g["members_count"];
+        if (current != null) {
+          g["actual_member_count"] = current is num ? current.toInt() : int.tryParse('$current') ?? 1;
+        }
       }
 
       if (mounted) {
         setState(() {
           _groups = groups;
-
           _isLoading = false;
+          _errorMessage = null;
         });
       }
     } catch (e) {
       debugPrint("Error fetching groups data: $e");
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString().replaceAll("Exception: ", "");
+        });
       }
     }
   }
 
-  void _showGroupDetails(Map<String, dynamic> group) {
-    Navigator.push(
+  void _showGroupDetails(Map<String, dynamic> group) async {
+    final updated = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => GroupDetailsPage(group: group),
       ),
     );
+    if (updated == true) {
+      _loadData();
+    }
+  }
+
+  void _showJoinDialog() async {
+    final res = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const JoinGroupDialog(),
+    );
+    if (res == true) {
+      _loadData();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final activeGroups = _groups
+        .where((g) => (g["status"] ?? "").toString().toLowerCase() != "completed")
+        .toList();
+    final completedGroups = _groups
+        .where((g) => (g["status"] ?? "").toString().toLowerCase() == "completed")
+        .toList();
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
+        preferredSize: const Size.fromHeight(64),
         child: AppBar(
-          backgroundColor: headerColor,
+          backgroundColor: headerOrange,
           elevation: 0,
           systemOverlayStyle: const SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,
             statusBarIconBrightness: Brightness.light,
           ),
           automaticallyImplyLeading: false,
-          titleSpacing: 16,
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFFF97316), Color(0xFFEA580C)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+          titleSpacing: 20,
           title: Row(
             children: [
-              // User Avatar
               Container(
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.8),
-                  color: const Color(0xFFFDE8DC),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.8),
+                  color: const Color(0xFFFFF7ED),
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(19),
-                  child: Container(
-                    color: const Color(0xFFE2E8F0),
-                    child: const Icon(
-                      Icons.person,
-                      color: Color(0xFF64748B),
-                      size: 24,
-                    ),
+                child: const Center(
+                  child: Icon(
+                    Icons.groups_rounded,
+                    color: headerOrange,
+                    size: 22,
                   ),
                 ),
               ),
               const SizedBox(width: 12),
               const Text(
-                "EQUb",
+                "My Equbs",
                 style: TextStyle(
                   color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 19,
-                  letterSpacing: 0.5,
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                  letterSpacing: -0.3,
                 ),
               ),
             ],
@@ -128,18 +165,21 @@ class _GroupsPageState extends State<GroupsPage> {
           actions: [
             IconButton(
               icon: const Icon(
-                Icons.notifications_none_rounded,
+                Icons.add_circle_outline_rounded,
                 color: Colors.white,
-                size: 26,
+                size: 24,
               ),
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("No new notifications"),
-                    duration: Duration(seconds: 1),
-                  ),
-                );
-              },
+              tooltip: "Join Group with Code",
+              onPressed: _showJoinDialog,
+            ),
+            IconButton(
+              icon: const Icon(
+                Icons.refresh_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
+              tooltip: "Refresh",
+              onPressed: _loadData,
             ),
             const SizedBox(width: 8),
           ],
@@ -147,43 +187,116 @@ class _GroupsPageState extends State<GroupsPage> {
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: headerColor),
+              child: CircularProgressIndicator(color: primaryOrange),
             )
           : RefreshIndicator(
               onRefresh: _loadData,
-              color: headerColor,
+              color: primaryOrange,
               child: ListView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                 children: [
-                  // "My Groups" Title
-                  const Text(
-                    "My Groups",
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: textDark,
-                      letterSpacing: -0.5,
+                  // Error Banner if network/API failed
+                  if (_errorMessage != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 18),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFFCA5A5)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 13,
+                                color: Color(0xFF991B1B),
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _loadData,
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
+                              "Retry",
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFFDC2626),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+
+                  // Header title with total count badge
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Equb Circles",
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: textDark,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF7ED),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: primaryOrange.withValues(alpha: 0.3)),
+                        ),
+                        child: Text(
+                          "${_groups.length} Total",
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: headerOrange,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
 
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 16),
 
                   // Segmented Switcher (Active / Completed)
-                  _buildSegmentedSwitcher(),
+                  _buildSegmentedSwitcher(activeGroups.length, completedGroups.length),
 
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 20),
 
                   // Active or Completed Groups
                   if (_selectedTabIndex == 0)
-                    ..._buildActiveTab()
+                    ..._buildActiveTab(activeGroups)
                   else
-                    ..._buildCompletedTab(),
+                    ..._buildCompletedTab(completedGroups),
 
                   const SizedBox(height: 24),
 
                   // Dashed "Create New Group" Button
                   _buildDashedCreateButton(),
+
+                  const SizedBox(height: 14),
+
+                  // Secondary "Join Group with Code" Button
+                  _buildJoinWithCodeButton(),
 
                   const SizedBox(height: 32),
                 ],
@@ -192,13 +305,14 @@ class _GroupsPageState extends State<GroupsPage> {
     );
   }
 
-  /// Segmented Switcher (Active / Completed)
-  Widget _buildSegmentedSwitcher() {
+  /// Segmented Switcher (Active / Completed) with counts
+  Widget _buildSegmentedSwitcher(int activeCount, int completedCount) {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Row(
         children: [
@@ -210,30 +324,49 @@ class _GroupsPageState extends State<GroupsPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: _selectedTabIndex == 0
-                      ? Colors.white
-                      : Colors.transparent,
+                  color: _selectedTabIndex == 0 ? Colors.white : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: _selectedTabIndex == 0
                       ? [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 6,
+                            color: Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
                         ]
                       : null,
                 ),
                 child: Center(
-                  child: Text(
-                    "Active",
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: _selectedTabIndex == 0
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                      color: _selectedTabIndex == 0 ? primaryBrown : textMuted,
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Active",
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 14,
+                          fontWeight: _selectedTabIndex == 0 ? FontWeight.w700 : FontWeight.w500,
+                          color: _selectedTabIndex == 0 ? headerOrange : textMuted,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: _selectedTabIndex == 0 ? const Color(0xFFFFF7ED) : const Color(0xFFE2E8F0),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          "$activeCount",
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: _selectedTabIndex == 0 ? headerOrange : textMuted,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -248,30 +381,49 @@ class _GroupsPageState extends State<GroupsPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: _selectedTabIndex == 1
-                      ? Colors.white
-                      : Colors.transparent,
+                  color: _selectedTabIndex == 1 ? Colors.white : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: _selectedTabIndex == 1
                       ? [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 6,
+                            color: Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
                         ]
                       : null,
                 ),
                 child: Center(
-                  child: Text(
-                    "Completed",
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: _selectedTabIndex == 1
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                      color: _selectedTabIndex == 1 ? primaryBrown : textMuted,
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Completed",
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 14,
+                          fontWeight: _selectedTabIndex == 1 ? FontWeight.w700 : FontWeight.w500,
+                          color: _selectedTabIndex == 1 ? headerOrange : textMuted,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: _selectedTabIndex == 1 ? const Color(0xFFFFF7ED) : const Color(0xFFE2E8F0),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          "$completedCount",
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: _selectedTabIndex == 1 ? headerOrange : textMuted,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -283,48 +435,98 @@ class _GroupsPageState extends State<GroupsPage> {
   }
 
   /// Active Groups List
-  List<Widget> _buildActiveTab() {
-    final activeGroups =
-        _groups.where((g) => (g["status"] ?? "active") != "completed").toList();
-
+  List<Widget> _buildActiveTab(List<Map<String, dynamic>> activeGroups) {
     if (activeGroups.isEmpty) {
       return [
         Container(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: borderColor),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          child: const Center(
-            child: Column(
-              children: [
-                Icon(
-                  Icons.groups_outlined,
-                  size: 48,
-                  color: Color(0xFF94A3B8),
+          child: Column(
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFF7ED),
+                  shape: BoxShape.circle,
                 ),
-                SizedBox(height: 12),
-                Text(
-                  "No active Equbs yet",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: textDark,
-                    fontFamily: 'Poppins',
+                child: const Center(
+                  child: Icon(
+                    Icons.groups_outlined,
+                    size: 32,
+                    color: headerOrange,
                   ),
                 ),
-                SizedBox(height: 4),
-                Text(
-                  "Join or create a new savings circle to get started.",
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: textMuted,
-                    fontFamily: 'Poppins',
-                  ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "No active Equbs yet",
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: textDark,
+                  fontFamily: 'Poppins',
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                "Join an existing savings circle with an invitation code or create your own circle to get started.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: textMuted,
+                  fontFamily: 'Poppins',
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _showJoinDialog,
+                      icon: const Icon(Icons.vpn_key_rounded, size: 16),
+                      label: const Text("Join Code", style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w700, fontSize: 13)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: headerOrange,
+                        side: const BorderSide(color: headerOrange),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final res = await Navigator.pushNamed(context, '/groups/create');
+                        if (res == true) _loadData();
+                      },
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text("Create Equb", style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w700, fontSize: 13)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryOrange,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ];
@@ -333,13 +535,12 @@ class _GroupsPageState extends State<GroupsPage> {
     final List<Widget> cardWidgets = [];
     for (int i = 0; i < activeGroups.length; i++) {
       final g = activeGroups[i];
-      final currentMembers =
-          g["current_members"] ?? g["member_count"] ?? g["members_count"] ?? 1;
+      final currentMembers = g["actual_member_count"] ?? g["current_members"] ?? g["member_count"] ?? g["members_count"] ?? 1;
       final maxMembers = g["max_members"] ?? 10;
       final status = (g["status"] ?? "pending").toString().toUpperCase();
       final isPending = status == "PENDING";
 
-      if (i > 0) cardWidgets.add(const SizedBox(height: 18));
+      if (i > 0) cardWidgets.add(const SizedBox(height: 16));
       cardWidgets.add(
         _buildGroupCard(
           title: g["group_name"] ?? "Equb Group",
@@ -348,7 +549,7 @@ class _GroupsPageState extends State<GroupsPage> {
           periodText: " / Cycle",
           cycleText: isPending
               ? "Pending Start"
-              : "Cycle ${g["current_cycle"] ?? 1}/${g["total_cycles"] ?? g["current_members"] ?? g["member_count"] ?? 0}",
+              : "Cycle ${g["current_cycle"] ?? 1}/${g["total_cycles"] ?? maxMembers}",
           payoutText: "Status: $status",
           statusText: status,
           isPending: isPending,
@@ -362,48 +563,62 @@ class _GroupsPageState extends State<GroupsPage> {
   }
 
   /// Completed Tab View
-  List<Widget> _buildCompletedTab() {
-    final completedGroups = _groups
-        .where(
-            (g) => (g["status"] ?? "").toString().toLowerCase() == "completed")
-        .toList();
-
+  List<Widget> _buildCompletedTab(List<Map<String, dynamic>> completedGroups) {
     if (completedGroups.isEmpty) {
       return [
         Container(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: borderColor),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          child: const Center(
-            child: Column(
-              children: [
-                Icon(
-                  Icons.check_circle_outline_rounded,
-                  size: 48,
-                  color: Color(0xFF94A3B8),
+          child: Column(
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF1F5F9),
+                  shape: BoxShape.circle,
                 ),
-                SizedBox(height: 12),
-                Text(
-                  "No completed Equbs yet",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: textDark,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  "Completed savings cycles will appear here.",
-                  style: TextStyle(
-                    fontSize: 13,
+                child: const Center(
+                  child: Icon(
+                    Icons.check_circle_outline_rounded,
+                    size: 32,
                     color: textMuted,
                   ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "No completed Equbs yet",
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: textDark,
+                  fontFamily: 'Poppins',
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                "When your savings circles finish all cycles and payouts, they will be archived here.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: textMuted,
+                  fontFamily: 'Poppins',
+                  height: 1.4,
+                ),
+              ),
+            ],
           ),
         ),
       ];
@@ -412,10 +627,9 @@ class _GroupsPageState extends State<GroupsPage> {
     final List<Widget> cardWidgets = [];
     for (int i = 0; i < completedGroups.length; i++) {
       final g = completedGroups[i];
-      final currentMembers =
-          g["current_members"] ?? g["member_count"] ?? g["members_count"] ?? 1;
+      final currentMembers = g["actual_member_count"] ?? g["current_members"] ?? g["member_count"] ?? g["members_count"] ?? 1;
       final maxMembers = g["max_members"] ?? 10;
-      if (i > 0) cardWidgets.add(const SizedBox(height: 18));
+      if (i > 0) cardWidgets.add(const SizedBox(height: 16));
       cardWidgets.add(
         _buildGroupCard(
           title: g["group_name"] ?? "Equb Group",
@@ -434,7 +648,7 @@ class _GroupsPageState extends State<GroupsPage> {
     return cardWidgets;
   }
 
-  /// Single Group Card matching design
+  /// Single Group Card matching design system
   Widget _buildGroupCard({
     required String title,
     required String membersText,
@@ -447,10 +661,15 @@ class _GroupsPageState extends State<GroupsPage> {
     required IconData icon,
     required VoidCallback onDetails,
   }) {
-    final statusBg = isPending ? const Color(0xFFFFF7ED) : activeGreenBg;
-    final statusColor = isPending ? const Color(0xFFEA580C) : activeGreen;
-    final statusBorder = isPending
-        ? Border.all(color: const Color(0xFFEA580C).withValues(alpha: 0.3))
+    final bool isCompleted = statusText == "COMPLETED";
+    final Color statusBg = isCompleted
+        ? const Color(0xFFF1F5F9)
+        : (isPending ? const Color(0xFFFFF7ED) : activeGreenBg);
+    final Color statusColor = isCompleted
+        ? textMuted
+        : (isPending ? headerOrange : activeGreen);
+    final Border? statusBorder = isPending
+        ? Border.all(color: headerOrange.withValues(alpha: 0.3))
         : null;
 
     return Container(
@@ -458,11 +677,11 @@ class _GroupsPageState extends State<GroupsPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+        border: Border.all(color: borderColor, width: 1.2),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 12,
+            blurRadius: 14,
             offset: const Offset(0, 4),
           ),
         ],
@@ -474,18 +693,21 @@ class _GroupsPageState extends State<GroupsPage> {
           Row(
             children: [
               Container(
-                width: 46,
-                height: 46,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  color: isPending
-                      ? const Color(0xFFFFF7ED)
-                      : const Color(0xFFFDF1EB),
-                  borderRadius: BorderRadius.circular(14),
+                  color: isCompleted
+                      ? const Color(0xFFF1F5F9)
+                      : const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isCompleted ? const Color(0xFFE2E8F0) : primaryOrange.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Center(
                   child: Icon(
                     icon,
-                    color: isPending ? const Color(0xFFEA580C) : primaryBrown,
+                    color: isCompleted ? textMuted : headerOrange,
                     size: 24,
                   ),
                 ),
@@ -501,6 +723,7 @@ class _GroupsPageState extends State<GroupsPage> {
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: textDark,
+                        fontFamily: 'Poppins',
                         letterSpacing: -0.2,
                       ),
                     ),
@@ -510,6 +733,7 @@ class _GroupsPageState extends State<GroupsPage> {
                       style: const TextStyle(
                         fontSize: 13,
                         color: textMuted,
+                        fontFamily: 'Poppins',
                         fontWeight: FontWeight.w400,
                       ),
                     ),
@@ -518,8 +742,7 @@ class _GroupsPageState extends State<GroupsPage> {
               ),
               // Status Badge
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusBg,
                   borderRadius: BorderRadius.circular(14),
@@ -537,6 +760,7 @@ class _GroupsPageState extends State<GroupsPage> {
                     Text(
                       statusText,
                       style: TextStyle(
+                        fontFamily: 'Poppins',
                         color: statusColor,
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
@@ -555,7 +779,8 @@ class _GroupsPageState extends State<GroupsPage> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFF1F5F9)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -567,7 +792,8 @@ class _GroupsPageState extends State<GroupsPage> {
                     const Text(
                       "CONTRIBUTION",
                       style: TextStyle(
-                        fontSize: 11,
+                        fontFamily: 'Poppins',
+                        fontSize: 10.5,
                         fontWeight: FontWeight.w700,
                         color: textMuted,
                         letterSpacing: 0.5,
@@ -582,6 +808,7 @@ class _GroupsPageState extends State<GroupsPage> {
                         Text(
                           amountText,
                           style: const TextStyle(
+                            fontFamily: 'Poppins',
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
                             color: textDark,
@@ -590,7 +817,8 @@ class _GroupsPageState extends State<GroupsPage> {
                         Text(
                           periodText,
                           style: const TextStyle(
-                            fontSize: 13,
+                            fontFamily: 'Poppins',
+                            fontSize: 12,
                             color: textMuted,
                             fontWeight: FontWeight.w500,
                           ),
@@ -607,7 +835,8 @@ class _GroupsPageState extends State<GroupsPage> {
                     const Text(
                       "TIMELINE",
                       style: TextStyle(
-                        fontSize: 11,
+                        fontFamily: 'Poppins',
+                        fontSize: 10.5,
                         fontWeight: FontWeight.w700,
                         color: textMuted,
                         letterSpacing: 0.5,
@@ -617,10 +846,12 @@ class _GroupsPageState extends State<GroupsPage> {
                     Text(
                       cycleText,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontFamily: 'Poppins',
+                        fontSize: 13.5,
                         fontWeight: FontWeight.w800,
-                        color:
-                            isPending ? const Color(0xFFEA580C) : primaryBrown,
+                        color: isCompleted
+                            ? textMuted
+                            : (isPending ? headerOrange : activeGreen),
                       ),
                     ),
                   ],
@@ -654,21 +885,38 @@ class _GroupsPageState extends State<GroupsPage> {
                   Text(
                     payoutText,
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontFamily: 'Poppins',
+                      fontSize: 12.5,
                       color: textMuted,
                       fontWeight: FontWeight.w400,
                     ),
                   ),
                 ],
               ),
-              GestureDetector(
+              InkWell(
                 onTap: onDetails,
-                child: const Text(
-                  "Details",
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: primaryBrown,
+                borderRadius: BorderRadius.circular(8),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "Details",
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: headerOrange,
+                        ),
+                      ),
+                      SizedBox(width: 2),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: headerOrange,
+                        size: 16,
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -691,7 +939,7 @@ class _GroupsPageState extends State<GroupsPage> {
       behavior: HitTestBehavior.opaque,
       child: CustomPaint(
         painter: DashedRectPainter(
-          color: primaryBrown,
+          color: primaryOrange,
           strokeWidth: 1.5,
           gap: 4,
           dash: 6,
@@ -701,39 +949,65 @@ class _GroupsPageState extends State<GroupsPage> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 18),
           decoration: BoxDecoration(
-            color: const Color(0xFFFDFBF9),
+            color: const Color(0xFFFFF7ED),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 36,
-                height: 36,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFDE8DC),
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: primaryOrange.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
                 child: const Center(
                   child: Icon(
-                    Icons.add,
-                    color: primaryBrown,
-                    size: 22,
+                    Icons.add_rounded,
+                    color: headerOrange,
+                    size: 24,
                   ),
                 ),
               ),
               const SizedBox(height: 8),
               const Text(
-                "Create New Group",
+                "Create New Equb Group",
                 style: TextStyle(
+                  fontFamily: 'Poppins',
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: primaryBrown,
+                  color: headerOrange,
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Secondary "Join Group with Code" Button
+  Widget _buildJoinWithCodeButton() {
+    return OutlinedButton.icon(
+      onPressed: _showJoinDialog,
+      icon: const Icon(Icons.vpn_key_rounded, size: 18, color: headerOrange),
+      label: const Text(
+        "Join Group with Invitation Code",
+        style: TextStyle(
+          fontFamily: 'Poppins',
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: headerOrange,
+        ),
+      ),
+      style: OutlinedButton.styleFrom(
+        backgroundColor: Colors.white,
+        side: const BorderSide(color: Color(0xFFFED7AA), width: 1.2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 15),
       ),
     );
   }
@@ -774,7 +1048,7 @@ class DashedRectPainter extends CustomPainter {
   final double radius;
 
   DashedRectPainter({
-    this.color = const Color(0xFF8D3606),
+    this.color = const Color(0xFFF97316),
     this.strokeWidth = 1.5,
     this.gap = 4.0,
     this.dash = 6.0,

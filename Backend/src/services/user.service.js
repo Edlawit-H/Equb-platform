@@ -1,5 +1,7 @@
 import pool from "../config/db.js";
 import bcrypt from "bcrypt";
+import { createOTP, findValidVerificationOTP, markOTPVerified } from "../models/otp.model.js";
+import { generateOTP } from "../utils/otp.js";
 
 export async function getMyProfile(userId) {
 
@@ -122,17 +124,15 @@ export async function updateMyProfile(userId, data) {
 }
 
 
-export async function changePassword(userId, data) {
+export async function requestPasswordChangeOTP(userId, data) {
+    const { current_password, new_password } = data;
+    if (!current_password || !new_password) {
+        throw new Error("Current and new passwords are required");
+    }
 
-    const {
-        current_password,
-        new_password,
-    } = data;
-
-    // Get current password hash
     const { rows } = await pool.query(
         `
-        SELECT password_hash
+        SELECT user_id, phone_number, password_hash
         FROM users
         WHERE user_id = $1
         AND is_deleted = FALSE;
@@ -144,10 +144,94 @@ export async function changePassword(userId, data) {
         throw new Error("User not found");
     }
 
+    const user = rows[0];
+
+    const isMatch = await bcrypt.compare(
+        current_password,
+        user.password_hash
+    );
+
+    if (!isMatch) {
+        throw new Error("Current password is incorrect");
+    }
+
+    if (current_password === new_password) {
+        throw new Error("New password must be different from current password");
+    }
+
+    if (new_password.length < 6) {
+        throw new Error("New password must be at least 6 characters");
+    }
+
+    // Invalidate previous verification OTPs for this phone number
+    await pool.query(
+        `
+        UPDATE otp_codes
+        SET verified = true
+        WHERE phone_number = $1
+          AND purpose = 'verification'
+          AND verified = false;
+        `,
+        [user.phone_number]
+    );
+
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    await createOTP({
+        phone_number: user.phone_number,
+        otp_code: otp,
+        purpose: "verification",
+        expires_at: expiresAt,
+    });
+
+    console.log("Password Change Verification OTP:", otp);
+
+    const phoneStr = user.phone_number || '';
+    const maskedPhone = phoneStr.length > 4
+        ? `${phoneStr.substring(0, phoneStr.length - 4).replace(/./g, '*').substring(0, 6)}${phoneStr.substring(phoneStr.length - 4)}`
+        : phoneStr;
+
+    return {
+        message: "Verification code sent successfully",
+        phone: user.phone_number,
+        masked_phone: maskedPhone,
+    };
+}
+
+export async function changePassword(userId, data) {
+
+    const {
+        current_password,
+        new_password,
+        otp_code,
+    } = data;
+
+    if (!current_password || !new_password) {
+        throw new Error("Current and new passwords are required");
+    }
+
+    // Get current password hash
+    const { rows } = await pool.query(
+        `
+        SELECT user_id, phone_number, password_hash
+        FROM users
+        WHERE user_id = $1
+        AND is_deleted = FALSE;
+        `,
+        [userId]
+    );
+
+    if (rows.length !== 1) {
+        throw new Error("User not found");
+    }
+
+    const user = rows[0];
+
     // Verify current password
     const isMatch = await bcrypt.compare(
         current_password,
-        rows[0].password_hash
+        user.password_hash
     );
 
     if (!isMatch) {
@@ -159,6 +243,19 @@ export async function changePassword(userId, data) {
         throw new Error(
             "New password must be different from the current password"
         );
+    }
+
+    if (new_password.length < 6) {
+        throw new Error("New password must be at least 6 characters");
+    }
+
+    // If OTP code is provided, verify it
+    if (otp_code) {
+        const otpRecord = await findValidVerificationOTP(user.phone_number, otp_code.trim(), 'verification');
+        if (!otpRecord) {
+            throw new Error("Invalid or expired verification code");
+        }
+        await markOTPVerified(otpRecord.otp_id);
     }
 
     // Hash new password
@@ -179,6 +276,10 @@ export async function changePassword(userId, data) {
             userId,
         ]
     );
+
+    return {
+        message: "Password changed successfully",
+    };
 }
 
 export async function getDashboard(userId) {

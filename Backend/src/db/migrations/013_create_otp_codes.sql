@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS otp_codes (
   user_id      UUID REFERENCES users(user_id) ON DELETE CASCADE,
   phone_number VARCHAR(20) NOT NULL,
   otp_code     VARCHAR(6)  NOT NULL,
-  purpose      VARCHAR(30) NOT NULL CHECK (purpose IN ('registration', 'forgot_password', 'verification')),
+  purpose      VARCHAR(30) NOT NULL CHECK (purpose IN ('registration', 'forgot_password', 'verification', 'password_change', 'phone_update', 'login')),
   verified     BOOLEAN     NOT NULL DEFAULT FALSE,
   expires_at   TIMESTAMP   NOT NULL,
   created_at   TIMESTAMP   NOT NULL DEFAULT NOW()

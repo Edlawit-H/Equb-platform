@@ -3,7 +3,43 @@ import { pool } from '../db/pool.js';
 import { notifyOverdueAlert, notifyPaymentReminder } from './notification.service.js';
 import { advanceCycle } from './payout.service.js';
 
+export const processPaymentReminders = async () => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT c.contribution_id, gm.user_id, eg.group_name, c.amount, c.due_date
+       FROM contributions c
+       JOIN group_members gm ON gm.member_id = c.member_id
+       JOIN equb_groups eg ON eg.group_id = c.group_id
+       WHERE c.status = 'pending'
+         AND eg.status = 'active'
+         AND c.due_date >= CURRENT_DATE
+         AND c.due_date <= CURRENT_DATE + INTERVAL '2 days'
+         AND NOT EXISTS (
+           SELECT 1 FROM notifications n
+           WHERE n.user_id = gm.user_id
+             AND n.type = 'payment_reminder'
+             AND n.created_at >= CURRENT_DATE
+             AND n.message LIKE '%' || eg.group_name || '%'
+         )`
+    );
+
+    for (const row of rows) {
+      await notifyPaymentReminder(
+        row.user_id,
+        row.group_name,
+        row.amount,
+        new Date(row.due_date)
+      ).catch(() => {});
+    }
+  } catch (err) {
+    console.error('Payment reminder error:', err.message);
+  }
+};
+
 export const startCronJobs = () => {
+
+  // Process reminders on startup
+  processPaymentReminders().catch(() => {});
 
   // Every hour: mark overdue contributions
   cron.schedule('0 * * * *', async () => {
@@ -43,30 +79,9 @@ export const startCronJobs = () => {
     }
   });
 
-  // Daily at 9AM: send payment reminders (48h and 24h before deadline)
+  // Daily at 9AM: send payment reminders
   cron.schedule('0 9 * * *', async () => {
-    try {
-      const { rows } = await pool.query(
-        `SELECT c.contribution_id, gm.user_id, eg.group_name, c.amount, c.due_date
-         FROM contributions c
-         JOIN group_members gm ON gm.member_id = c.member_id
-         JOIN equb_groups eg ON eg.group_id = c.group_id
-         WHERE c.status = 'pending'
-           AND c.due_date > CURRENT_DATE
-           AND c.due_date <= CURRENT_DATE + INTERVAL '2 days'`
-      );
-
-      for (const row of rows) {
-        await notifyPaymentReminder(
-          row.user_id,
-          row.group_name,
-          row.amount,
-          new Date(row.due_date)
-        ).catch(() => {});
-      }
-    } catch (err) {
-      console.error('Payment reminder cron error:', err.message);
-    }
+    await processPaymentReminders();
   });
 
   // Every hour: advance cycle when cycle_end_date has passed AND payout was issued

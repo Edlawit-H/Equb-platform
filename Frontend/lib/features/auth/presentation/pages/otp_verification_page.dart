@@ -2,17 +2,20 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/api_service.dart';
+import '../../../../core/utils/test_otp_dialog.dart';
 
 class OtpScreen extends StatefulWidget {
   final String fullName;
   final String phone;
   final String password;
+  final String? initialOtp;
 
   const OtpScreen({
     super.key,
     this.fullName = '',
     this.phone = '',
     this.password = '',
+    this.initialOtp,
   });
 
   @override
@@ -39,6 +42,13 @@ class _OtpScreenState extends State<OtpScreen> {
   void initState() {
     super.initState();
     _startResendTimer();
+    if (widget.initialOtp != null && widget.initialOtp!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          showTestOtpPopup(context, otp: widget.initialOtp!, title: "Registration OTP");
+        }
+      });
+    }
   }
 
   void _startResendTimer() {
@@ -186,7 +196,13 @@ class _OtpScreenState extends State<OtpScreen> {
 
     try {
       if (widget.phone.isNotEmpty) {
-        await ApiService.resendRegistrationOTP(phone: widget.phone);
+        final res = await ApiService.resendRegistrationOTP(phone: widget.phone);
+        if (!mounted) return;
+
+        final otpVal = (res['data']?['otp'] ?? res['otp'])?.toString();
+        if (otpVal != null && otpVal.isNotEmpty) {
+          showTestOtpPopup(context, otp: otpVal, title: "Registration OTP");
+        }
       }
 
       if (!mounted) return;
