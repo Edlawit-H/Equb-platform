@@ -2,13 +2,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/api_service.dart';
+import '../../../../core/utils/test_otp_dialog.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   final String phone;
+  final String? initialOtp;
 
   const ResetPasswordScreen({
     super.key,
     this.phone = '',
+    this.initialOtp,
   });
 
   @override
@@ -42,6 +45,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   void initState() {
     super.initState();
     _startResendTimer();
+    if (widget.initialOtp != null && widget.initialOtp!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          showTestOtpPopup(context, otp: widget.initialOtp!, title: "Reset Password OTP");
+        }
+      });
+    }
   }
 
   void _startResendTimer() {

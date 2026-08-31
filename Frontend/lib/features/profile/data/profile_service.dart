@@ -52,14 +52,14 @@ class ProfileService {
     throw Exception(decoded['message'] ?? 'Failed to update profile');
   }
 
-  static Future<void> changePassword({
+  static Future<Map<String, dynamic>> requestPasswordChangeOTP({
     required String currentPassword,
     required String newPassword,
   }) async {
     final token = await _getToken();
 
     final response = await http.post(
-      Uri.parse("$baseUrl/users/me/change-password"),
+      Uri.parse("$baseUrl/users/me/password/send-otp"),
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer $token",
@@ -70,8 +70,41 @@ class ProfileService {
       }),
     );
 
-    if (response.statusCode == 200) return;
     final decoded = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return decoded;
+    }
+    throw Exception(decoded['message'] ?? 'Failed to send verification code');
+  }
+
+  static Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    String? otpCode,
+  }) async {
+    final token = await _getToken();
+
+    final body = <String, dynamic>{
+      "current_password": currentPassword,
+      "new_password": newPassword,
+    };
+    if (otpCode != null && otpCode.isNotEmpty) {
+      body["otp_code"] = otpCode.trim();
+    }
+
+    final response = await http.patch(
+      Uri.parse("$baseUrl/users/me/password"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+      body: jsonEncode(body),
+    );
+
+    final decoded = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return decoded;
+    }
     throw Exception(decoded['message'] ?? 'Failed to change password');
   }
 }

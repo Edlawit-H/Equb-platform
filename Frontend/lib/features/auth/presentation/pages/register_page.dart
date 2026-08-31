@@ -99,7 +99,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: Colors.black.withValues(alpha: 0.04),
                         blurRadius: 24,
                         offset: const Offset(0, 8),
                       ),
@@ -197,7 +197,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               borderRadius: BorderRadius.circular(14),
                               boxShadow: [
                                 BoxShadow(
-                                  color: primaryColor.withOpacity(0.35),
+                                  color: primaryColor.withValues(alpha: 0.35),
                                   blurRadius: 16,
                                   offset: const Offset(0, 6),
                                 ),
@@ -209,7 +209,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 backgroundColor: primaryColor,
                                 foregroundColor: Colors.white,
                                 disabledBackgroundColor:
-                                    primaryColor.withOpacity(0.7),
+                                    primaryColor.withValues(alpha: 0.7),
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
@@ -349,10 +349,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() => isLoading = true);
 
       try {
-        await ApiService.register(
+        final res = await ApiService.register(
           phone: phoneController.text,
         );
         if (!mounted) return;
+
+        final otpVal = (res['data']?['otp'] ?? res['otp'])?.toString();
 
         Navigator.push(
           context,
@@ -361,6 +363,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               fullName: nameController.text.trim(),
               phone: phoneController.text.trim(),
               password: passwordController.text,
+              initialOtp: otpVal,
             ),
           ),
         );

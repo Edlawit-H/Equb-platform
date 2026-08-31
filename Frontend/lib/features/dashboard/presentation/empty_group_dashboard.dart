@@ -190,12 +190,7 @@ class EmptyGroupDashboard extends StatelessWidget {
                 size: 26,
               ),
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("No new notifications"),
-                    duration: Duration(seconds: 1),
-                  ),
-                );
+                Navigator.pushNamed(context, '/notifications');
               },
             ),
             const SizedBox(width: 8),

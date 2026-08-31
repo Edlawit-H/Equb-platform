@@ -45,15 +45,34 @@ export async function updateMyProfile(req, res, next) {
     }
 }
 export const uploadAvatar = async (_req, _res, _next) => {};
-export async function changePassword(req, res, next) {
+
+export async function requestPasswordChangeOTP(req, res, next) {
     try {
-        await userService.changePassword(
+        const result = await userService.requestPasswordChangeOTP(
             req.user.userId,
             req.body
         );
 
         res.status(200).json({
-            message: "Password changed successfully",
+            message: result.message || "Verification code sent successfully",
+            phone: result.phone,
+            masked_phone: result.masked_phone,
+            otp: result.otp,
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
+export async function changePassword(req, res, next) {
+    try {
+        const result = await userService.changePassword(
+            req.user.userId,
+            req.body
+        );
+
+        res.status(200).json({
+            message: result?.message || "Password changed successfully",
         });
     } catch (err) {
         next(err);

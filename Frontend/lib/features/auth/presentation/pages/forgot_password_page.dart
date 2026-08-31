@@ -39,9 +39,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     });
 
     try {
-      await ApiService.requestPasswordReset(phone: phone);
+      final res = await ApiService.requestPasswordReset(phone: phone);
 
       if (!mounted) return;
+
+      final otpVal = (res['data']?['otp'] ?? res['otp'])?.toString();
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -53,7 +55,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => ResetPasswordScreen(phone: phone),
+          builder: (_) => ResetPasswordScreen(
+            phone: phone,
+            initialOtp: otpVal,
+          ),
         ),
       );
     } catch (e) {

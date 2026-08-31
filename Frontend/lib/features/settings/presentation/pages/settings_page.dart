@@ -66,7 +66,7 @@ class _Section extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
           ),
           child: Column(
             children: items.asMap().entries.map((e) {
@@ -77,7 +77,7 @@ class _Section extends StatelessWidget {
                   ListTile(
                     leading: Container(
                       width: 38, height: 38,
-                      decoration: BoxDecoration(color: item.color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                      decoration: BoxDecoration(color: item.color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                       child: Icon(item.icon, color: item.color, size: 20),
                     ),
                     title: Text(item.label, style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w500, color: AppTheme.darkText, fontSize: 14)),

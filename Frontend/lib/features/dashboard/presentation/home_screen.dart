@@ -132,6 +132,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  int _groupsKeyCounter = 0;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -139,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
         index: _currentIndex,
         children: [
           _buildHomeTab(),
-          const GroupsPage(),
+          GroupsPage(key: ValueKey(_groupsKeyCounter)),
           const ContributionListPage(),
           const WalletPage(),
           const ProfilePage(),
@@ -150,6 +152,9 @@ class _HomeScreenState extends State<HomeScreen> {
         onTap: (index) {
           setState(() {
             _currentIndex = index;
+            if (index == 1) {
+              _groupsKeyCounter++;
+            }
           });
           if (index == 0) {
             loadDashboardData();

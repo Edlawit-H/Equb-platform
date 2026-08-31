@@ -1,5 +1,6 @@
 import pool from "../config/db.js";
 import crypto from "crypto";
+import { notifyGroupStarted, notifyPaymentReminder } from "./notification.service.js";
 
 function generateInvitationCode() {
     return crypto.randomBytes(4).toString('hex').toUpperCase();
@@ -458,7 +459,7 @@ export async function startGroup(groupId, userId) {
         if (group.status === 'completed') throw new Error('Group is already completed');
 
         const { rows: members } = await client.query(
-            `SELECT member_id FROM group_members WHERE group_id = $1 AND status = 'active'`,
+            `SELECT member_id, user_id FROM group_members WHERE group_id = $1 AND status = 'active'`,
             [groupId]
         );
 
@@ -500,6 +501,19 @@ export async function startGroup(groupId, userId) {
         }
 
         await client.query('COMMIT');
+
+        // Dispatch notifications to members
+        await notifyGroupStarted(groupId).catch(() => {});
+        for (const member of members) {
+            if (member.user_id) {
+                await notifyPaymentReminder(
+                    member.user_id,
+                    group.group_name,
+                    group.contribution_amount,
+                    dueDate
+                ).catch(() => {});
+            }
+        }
 
         return {
             group_id: groupId,
