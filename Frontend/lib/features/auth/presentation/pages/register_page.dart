@@ -115,7 +115,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 8),
                         _buildTextField(
                           controller: nameController,
-                          hintText: "John Doe",
+                          hintText: "Abebe Girma",
                           hintColor: hintColor,
                           fillColor: inputFillColor,
                           borderColor: borderColor,
@@ -132,7 +132,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 8),
                         _buildTextField(
                           controller: phoneController,
-                          hintText: "+123 456 7890",
+                          hintText: "09XXXXXXXX or +251XXXXXXXXX",
                           keyboardType: TextInputType.phone,
                           hintColor: hintColor,
                           fillColor: inputFillColor,

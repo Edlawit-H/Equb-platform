@@ -15,7 +15,6 @@ import {
   generateOTP
 } from "../utils/otp.js";
 
-
 import {
   findUserByPhoneForLogin
 } from "../models/users.model.js";
@@ -23,7 +22,6 @@ import {
 import {
   findValidResetOTP
 } from "../models/otp.model.js";
-
 
 import {
   updatePassword
@@ -37,6 +35,7 @@ import {
   verifyRefreshToken
 } from "../utils/jwt.js";
 import { AppError } from "../utils/AppError.js";
+import { normalizePhone } from "../utils/phone.js";
 
 
 
@@ -44,6 +43,8 @@ export const registerUser = async (data) => {
   if (!data?.phone_number) {
     throw new AppError("Phone number is required", 400);
   }
+
+  data.phone_number = normalizePhone(data.phone_number);
 
   const existing =
     await findUserByPhone(
@@ -95,11 +96,14 @@ export const verifyRegistrationOTP =
       throw new AppError("All fields are required", 400);
     }
 
+    data.phone_number = normalizePhone(data.phone_number);
+
     const client =
       await pool.connect();
     try {
 
       await client.query("BEGIN");
+
 
 
       const otpRecord =
@@ -201,6 +205,8 @@ export const loginUser = async (data) => {
   if (!data?.phone_number || !data?.password) {
     throw new AppError("Phone number and password are required", 400);
   }
+
+  data.phone_number = normalizePhone(data.phone_number);
 
   const user =
     await findUserByPhoneForLogin(

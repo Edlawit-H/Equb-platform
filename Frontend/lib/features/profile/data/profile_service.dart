@@ -35,18 +35,43 @@ class ProfileService {
   }) async {
     final token = await _getToken();
 
+    final body = <String, dynamic>{'full_name': fullName};
+    if (email.isNotEmpty) body['email'] = email;
+
     final response = await http.patch(
       Uri.parse("$baseUrl/users/me"),
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer $token",
       },
+      body: jsonEncode(body),
+    );
+
+    final decoded = jsonDecode(response.body);
+    if (response.statusCode == 200) return decoded;
+    throw Exception(decoded['message'] ?? 'Failed to update profile');
+  }
+
+  static Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final token = await _getToken();
+
+    final response = await http.post(
+      Uri.parse("$baseUrl/users/me/change-password"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
       body: jsonEncode({
-        "full_name": fullName,
-        "email": email,
+        "current_password": currentPassword,
+        "new_password": newPassword,
       }),
     );
 
-    return jsonDecode(response.body);
+    if (response.statusCode == 200) return;
+    final decoded = jsonDecode(response.body);
+    throw Exception(decoded['message'] ?? 'Failed to change password');
   }
-}
+}

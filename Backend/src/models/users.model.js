@@ -3,14 +3,16 @@ import { phoneLookupVariants } from "../utils/phone.js";
 
 
 export const findUserByPhone = async (phone) => {
+  const variants = phoneLookupVariants(phone);
 
   const result = await pool.query(
     `
     SELECT *
     FROM users
-    WHERE phone_number = $1
+    WHERE phone_number = ANY($1::text[])
+    LIMIT 1
     `,
-    [phone]
+    [variants]
   );
 
   return result.rows[0];

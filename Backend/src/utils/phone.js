@@ -1,3 +1,4 @@
+/** Returns all phone format variants for a lookup query. */
 export const phoneLookupVariants = (phone) => {
   const trimmed = phone.trim();
   const variants = new Set([trimmed]);
@@ -18,4 +19,13 @@ export const phoneLookupVariants = (phone) => {
   }
 
   return [...variants];
+};
+
+/** Normalizes any Ethiopian phone format to +251XXXXXXXXX. */
+export const normalizePhone = (phone) => {
+  const t = phone.trim();
+  if (t.startsWith('+251')) return t;
+  if (t.startsWith('251') && t.length >= 11) return `+${t}`;
+  if (t.startsWith('0') && t.length >= 10) return `+251${t.slice(1)}`;
+  return t;
 };
