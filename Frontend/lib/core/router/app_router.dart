@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/pages/onboarding_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
@@ -42,6 +42,7 @@ import '../../features/settings/presentation/pages/pin_setup_page.dart';
 import '../../features/settings/presentation/pages/pin_lock_page.dart';
 import '../../features/settings/presentation/pages/active_sessions_page.dart';
 import '../../features/settings/presentation/pages/help_support_page.dart';
+import '../../features/settings/presentation/pages/about_equb_page.dart';
 
 Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
   final name = settings.name ?? '/';
@@ -158,9 +159,12 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
     page = const ActiveSessionsPage();
   } else if (name == '/settings/help') {
     page = const HelpSupportPage();
+  } else if (name == '/settings/about') {
+    page = const AboutEqubPage();
   } else {
     page = const HomeScreen();
   }
 
   return MaterialPageRoute(builder: (_) => page, settings: settings);
 }
+

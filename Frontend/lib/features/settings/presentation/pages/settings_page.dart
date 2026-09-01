@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../../core/theme/app_theme.dart';
 
@@ -37,7 +37,7 @@ class SettingsPage extends StatelessWidget {
             const SizedBox(height: 16),
             _Section('Support', [
               _Item(Icons.help_rounded, 'Help & Support', AppTheme.grayText, () => Navigator.pushNamed(context, '/settings/help')),
-              _Item(Icons.info_rounded, 'About Equb', AppTheme.grayText, () {}),
+              _Item(Icons.info_rounded, 'About Equb', AppTheme.grayText, () => Navigator.pushNamed(context, '/settings/about')),
             ]),
             const SizedBox(height: 16),
             _LogoutButton(),
@@ -149,3 +149,4 @@ class _LogoutDialog extends StatelessWidget {
     );
   }
 }
+

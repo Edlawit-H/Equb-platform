@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class HelpSupportPage extends StatelessWidget {
   const HelpSupportPage({super.key});
 
   final faqs = const [
-    {'q': 'What is Equb?', 'a': 'Equb is a traditional Ethiopian rotating savings and credit association (ROSCA) brought online for transparency and ease.'},
+    {'q': 'What is Equb?', 'a': 'Equb is a traditional Ethiopian community savings system where members contribute equally every cycle and take turns receiving the pooled amount, now brought online for transparency and ease.'},
     {'q': 'How are payouts determined?', 'a': 'Payouts are determined automatically by our fair algorithm or by admin approval at the end of each contribution cycle.'},
     {'q': 'Is my wallet balance safe?', 'a': 'Yes, all wallet operations are secured with state-of-the-art encryption and full transaction logging.'},
     {'q': 'How do I join an Equb group?', 'a': 'Navigate to the Groups tab on the main navigation bar and tap Join Group or enter an invitation code.'},
@@ -80,3 +80,4 @@ class HelpSupportPage extends StatelessWidget {
     );
   }
 }
+
