@@ -1,4 +1,4 @@
-import pool from "../config/db.js";
+﻿import pool from "../config/db.js";
 import bcrypt from "bcrypt";
 import { createOTP, findValidVerificationOTP, markOTPVerified } from "../models/otp.model.js";
 import { generateOTP } from "../utils/otp.js";
@@ -196,6 +196,7 @@ export async function requestPasswordChangeOTP(userId, data) {
         message: "Verification code sent successfully",
         phone: user.phone_number,
         masked_phone: maskedPhone,
+        otp: otp,   // dev only — remove before production
     };
 }
 
