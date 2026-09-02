@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/loading_overlay.dart';
 import '../../../../core/widgets/error_snackbar.dart';
@@ -94,14 +94,14 @@ class _HeaderCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         children: [
           Container(
             width: 64,
             height: 64,
-            decoration: BoxDecoration(color: statusColor.withOpacity(0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), shape: BoxShape.circle),
             child: Icon(Icons.payments_rounded, color: statusColor, size: 32),
           ),
           const SizedBox(height: 12),
@@ -111,7 +111,7 @@ class _HeaderCard extends StatelessWidget {
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+            decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
             child: Text(status, style: TextStyle(color: statusColor, fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 13)),
           ),
         ],
@@ -132,16 +132,16 @@ class _DetailCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Column(
         children: [
-          _Row('Group', contribution['group_name'] ?? '—'),
+          _Row('Group', contribution['group_name'] ?? 'â€”'),
           _Row('Cycle Number', 'Cycle ${contribution['cycle_number'] ?? 1}'),
-          _Row('Due Date', contribution['due_date'] ?? '—'),
+          _Row('Due Date', contribution['due_date'] ?? 'â€”'),
           _Row('Paid Date', contribution['paid_date'] ?? 'Not paid yet'),
           _Row('Amount', 'ETB ${contribution['amount'] ?? 0}'),
-          _Row('Status', contribution['status'] ?? '—'),
+          _Row('Status', contribution['status'] ?? 'â€”'),
           _Row('Contribution ID', _short(contribution['contribution_id'])),
         ],
       ),
@@ -162,8 +162,9 @@ class _DetailCard extends StatelessWidget {
   }
 
   String _short(dynamic id) {
-    if (id == null) return '—';
+    if (id == null) return 'â€”';
     final s = id.toString();
     return s.length > 12 ? '...${s.substring(s.length - 12)}' : s;
   }
 }
+

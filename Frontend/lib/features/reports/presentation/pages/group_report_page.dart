@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/loading_overlay.dart';
 import '../../../../core/widgets/error_snackbar.dart';
@@ -99,7 +99,7 @@ class _GroupReportPageState extends State<GroupReportPage> {
                       const SizedBox(height: 10),
                       Container(
                         padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))]),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))]),
                         child: Column(
                           children: [
                             Row(
@@ -125,17 +125,17 @@ class _GroupReportPageState extends State<GroupReportPage> {
                         const Text('Member Payment Status', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 15, color: AppTheme.darkText)),
                         const SizedBox(height: 10),
                         Container(
-                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))]),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))]),
                           child: Column(
                             children: members.asMap().entries.map((e) {
                               final m = e.value;
                               final isPaid = m['status'] == 'paid';
                               return ListTile(
                                 leading: CircleAvatar(
-                                  backgroundColor: isPaid ? AppTheme.success.withOpacity(0.1) : AppTheme.error.withOpacity(0.1),
+                                  backgroundColor: isPaid ? AppTheme.success.withValues(alpha: 0.1) : AppTheme.error.withValues(alpha: 0.1),
                                   child: Icon(isPaid ? Icons.check_rounded : Icons.close_rounded, color: isPaid ? AppTheme.success : AppTheme.error, size: 18),
                                 ),
-                                title: Text(m['member_name'] ?? '—', style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 14)),
+                                title: Text(m['member_name'] ?? 'â€”', style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 14)),
                                 subtitle: Text(isPaid ? 'Paid' : (m['status'] == 'overdue' ? 'Overdue' : 'Pending'), style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: isPaid ? AppTheme.success : AppTheme.error)),
                                 trailing: Text('ETB ${m['amount'] ?? 0}', style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 13)),
                               );
@@ -148,12 +148,12 @@ class _GroupReportPageState extends State<GroupReportPage> {
                         const Text('Overdue Contributions', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 15, color: AppTheme.error)),
                         const SizedBox(height: 10),
                         Container(
-                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.error.withOpacity(0.3))),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.error.withValues(alpha: 0.3))),
                           child: Column(
                             children: overdue.map((o) => ListTile(
                               leading: const Icon(Icons.warning_amber_rounded, color: AppTheme.error),
-                              title: Text(o['member_name'] ?? '—', style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 14)),
-                              subtitle: Text('Due: ${o['due_date'] ?? '—'}', style: const TextStyle(fontFamily: 'Poppins', color: AppTheme.grayText, fontSize: 12)),
+                              title: Text(o['member_name'] ?? 'â€”', style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 14)),
+                              subtitle: Text('Due: ${o['due_date'] ?? 'â€”'}', style: const TextStyle(fontFamily: 'Poppins', color: AppTheme.grayText, fontSize: 12)),
                               trailing: Text('ETB ${o['amount'] ?? 0}', style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: AppTheme.error, fontSize: 13)),
                             )).toList(),
                           ),
@@ -197,11 +197,11 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))]),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(width: 38, height: 38, decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: color, size: 20)),
+          Container(width: 38, height: 38, decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: color, size: 20)),
           const SizedBox(height: 10),
           Text(value, style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.darkText)),
           Text(label, style: const TextStyle(fontFamily: 'Poppins', color: AppTheme.grayText, fontSize: 11)),
@@ -210,3 +210,4 @@ class _StatCard extends StatelessWidget {
     );
   }
 }
+

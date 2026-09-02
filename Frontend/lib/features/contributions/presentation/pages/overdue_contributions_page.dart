@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/loading_overlay.dart';
 import '../../../../core/widgets/error_snackbar.dart';
@@ -136,14 +136,14 @@ class _OverdueContributionsPageState extends State<OverdueContributionsPage> {
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: AppTheme.error.withOpacity(0.3)),
-                                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                                  border: Border.all(color: AppTheme.error.withValues(alpha: 0.3)),
+                                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
                                 ),
                                 child: Row(
                                   children: [
                                     Container(
                                       width: 44, height: 44,
-                                      decoration: BoxDecoration(color: AppTheme.error.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                                      decoration: BoxDecoration(color: AppTheme.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
                                       child: const Icon(Icons.warning_amber_rounded, color: AppTheme.error, size: 22),
                                     ),
                                     const SizedBox(width: 14),
@@ -151,8 +151,8 @@ class _OverdueContributionsPageState extends State<OverdueContributionsPage> {
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text(c['group_name'] ?? '—', style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.darkText)),
-                                          Text('Due: ${c['due_date'] ?? '—'} · Cycle ${c['cycle_number'] ?? 1}', style: const TextStyle(fontFamily: 'Poppins', color: AppTheme.error, fontSize: 12)),
+                                          Text(c['group_name'] ?? 'â€”', style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.darkText)),
+                                          Text('Due: ${c['due_date'] ?? 'â€”'} Â· Cycle ${c['cycle_number'] ?? 1}', style: const TextStyle(fontFamily: 'Poppins', color: AppTheme.error, fontSize: 12)),
                                         ],
                                       ),
                                     ),
@@ -200,3 +200,4 @@ class _OverdueContributionsPageState extends State<OverdueContributionsPage> {
     );
   }
 }
+

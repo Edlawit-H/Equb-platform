@@ -1,20 +1,16 @@
+﻿import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// ---------------------------------------------------------------------------
-/// TESTING OTP POPUP / ALERT UTILITY
-/// Easily removable: Set [kEnableTestOtpPopup] to false or delete this file.
-/// ---------------------------------------------------------------------------
-const bool kEnableTestOtpPopup = true;
-
-/// Displays an alert popup containing the generated test OTP code.
+// Shows a branded OTP popup in debug/development builds only.
+// In release builds this is a no-op — the dialog never appears.
 Future<void> showTestOtpPopup(
   BuildContext context, {
   required String otp,
-  String title = "Testing OTP Code",
-  String subtitle = "This popup is enabled for development and testing purposes only.",
+  String title = "Verification Code",
+  String subtitle = "Use this code to complete verification. This dialog only appears in development builds.",
 }) async {
-  if (!kEnableTestOtpPopup || otp.trim().isEmpty) return;
+  if (!kDebugMode || otp.trim().isEmpty) return;
 
   await showDialog(
     context: context,
@@ -30,11 +26,7 @@ Future<void> showTestOtpPopup(
               color: const Color(0xFFFFF7ED),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(
-              Icons.mark_email_read_rounded,
-              color: Color(0xFFEA580C),
-              size: 22,
-            ),
+            child: const Icon(Icons.mark_email_read_rounded, color: Color(0xFFEA580C), size: 22),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -70,10 +62,7 @@ Future<void> showTestOtpPopup(
             decoration: BoxDecoration(
               color: const Color(0xFFFFF7ED),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: const Color(0xFFF97316).withValues(alpha: 0.3),
-                width: 1.5,
-              ),
+              border: Border.all(color: const Color(0xFFF97316).withValues(alpha: 0.3), width: 1.5),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -92,12 +81,12 @@ Future<void> showTestOtpPopup(
                 const SizedBox(width: 10),
                 IconButton(
                   icon: const Icon(Icons.copy_rounded, color: Color(0xFFEA580C), size: 20),
-                  tooltip: "Copy OTP",
+                  tooltip: "Copy",
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: otp));
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text("OTP copied to clipboard!"),
+                        content: Text("Copied to clipboard"),
                         duration: Duration(seconds: 1),
                         behavior: SnackBarBehavior.floating,
                       ),
@@ -123,11 +112,7 @@ Future<void> showTestOtpPopup(
             ),
             child: const Text(
               "Got It",
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-              ),
+              style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w700, fontSize: 14),
             ),
           ),
         ),

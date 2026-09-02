@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/loading_overlay.dart';
 import '../../../../core/widgets/error_snackbar.dart';
@@ -55,7 +55,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
                 ),
                 child: Column(
                   children: [
@@ -63,7 +63,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       width: 72,
                       height: 72,
                       decoration: BoxDecoration(
-                        color: isCredit ? AppTheme.success.withOpacity(0.1) : AppTheme.error.withOpacity(0.1),
+                        color: isCredit ? AppTheme.success.withValues(alpha: 0.1) : AppTheme.error.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -88,7 +88,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                       decoration: BoxDecoration(
-                        color: AppTheme.success.withOpacity(0.1),
+                        color: AppTheme.success.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(_tx!['status'] ?? '', style: const TextStyle(fontFamily: 'Poppins', color: AppTheme.success, fontWeight: FontWeight.w600, fontSize: 12)),
@@ -141,7 +141,7 @@ class _DetailSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Column(
         children: items.map((item) => Padding(
@@ -166,3 +166,4 @@ class _DetailItem {
   final String value;
   const _DetailItem(this.label, this.value);
 }
+

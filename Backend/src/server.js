@@ -17,8 +17,16 @@ const start = async () => {
     process.stderr.write('Ensure PostgreSQL is running and credentials in .env are correct.\n');
   }
 
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     process.stdout.write(`Server running on http://localhost:${PORT}\n`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      process.stderr.write(`Port ${PORT} is already in use. Stop the existing process or change PORT in your .env file.\n`);
+      process.exit(1);
+    }
+    throw err;
   });
 };
 

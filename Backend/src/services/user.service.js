@@ -185,7 +185,7 @@ export async function requestPasswordChangeOTP(userId, data) {
         expires_at: expiresAt,
     });
 
-    console.log("Password Change Verification OTP:", otp);
+    if (process.env.NODE_ENV !== 'production') console.log('Password Change OTP:', otp);
 
     const phoneStr = user.phone_number || '';
     const maskedPhone = phoneStr.length > 4
@@ -196,7 +196,7 @@ export async function requestPasswordChangeOTP(userId, data) {
         message: "Verification code sent successfully",
         phone: user.phone_number,
         masked_phone: maskedPhone,
-        otp: otp,   // dev only — remove before production
+        ...(process.env.NODE_ENV !== 'production' && { otp }),
     };
 }
 

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class LanguagePage extends StatefulWidget {
@@ -13,9 +13,9 @@ class _LanguagePageState extends State<LanguagePage> {
 
   final languages = [
     {'code': 'en', 'name': 'English', 'native': 'English'},
-    {'code': 'am', 'name': 'Amharic', 'native': 'አማርኛ'},
+    {'code': 'am', 'name': 'Amharic', 'native': 'áŠ áˆ›áˆ­áŠ›'},
     {'code': 'om', 'name': 'Oromo', 'native': 'Afaan Oromoo'},
-    {'code': 'ti', 'name': 'Tigrinya', 'native': 'ትግርኛ'},
+    {'code': 'ti', 'name': 'Tigrinya', 'native': 'á‰µáŒáˆ­áŠ›'},
   ];
 
   @override
@@ -36,7 +36,7 @@ class _LanguagePageState extends State<LanguagePage> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
               ),
               child: Column(
                 children: languages.asMap().entries.map((e) {
@@ -78,3 +78,4 @@ class _LanguagePageState extends State<LanguagePage> {
     );
   }
 }
+

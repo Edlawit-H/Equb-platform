@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/error_snackbar.dart';
@@ -113,7 +113,7 @@ class _ExportReportPageState extends State<ExportReportPage> {
                                 color: Colors.white,
                                 fontSize: 18)),
                         Text(
-                            'Tap to download — file saves to your Downloads folder',
+                            'Tap to download â€” file saves to your Downloads folder',
                             style: TextStyle(
                                 fontFamily: 'Poppins',
                                 color: Colors.white70,
@@ -139,11 +139,11 @@ class _ExportReportPageState extends State<ExportReportPage> {
               icon: Icons.picture_as_pdf_rounded,
               title: 'Financial Report (.txt)',
               subtitle:
-                  'Full formatted transaction report — downloads instantly',
+                  'Full formatted transaction report â€” downloads instantly',
               color: AppTheme.error,
               loading: _loadingPdf,
               done: _pdfDone,
-              doneLabel: 'Downloaded ✓',
+              doneLabel: 'Downloaded âœ“',
               onTap: _loadingPdf ? null : _exportPdf,
             ),
 
@@ -153,11 +153,11 @@ class _ExportReportPageState extends State<ExportReportPage> {
             _ExportCard(
               icon: Icons.table_chart_rounded,
               title: 'CSV Spreadsheet (.csv)',
-              subtitle: 'All transactions — open in Excel or Google Sheets',
+              subtitle: 'All transactions â€” open in Excel or Google Sheets',
               color: AppTheme.secondary,
               loading: _loadingExcel,
               done: _excelDone,
-              doneLabel: 'Downloaded ✓',
+              doneLabel: 'Downloaded âœ“',
               onTap: _loadingExcel ? null : _exportExcel,
             ),
 
@@ -166,9 +166,9 @@ class _ExportReportPageState extends State<ExportReportPage> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.success.withOpacity(0.08),
+                  color: AppTheme.success.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppTheme.success.withOpacity(0.3)),
+                  border: Border.all(color: AppTheme.success.withValues(alpha: 0.3)),
                 ),
                 child: const Row(
                   children: [
@@ -229,7 +229,7 @@ class _ExportCard extends StatelessWidget {
           border: done ? Border.all(color: AppTheme.success, width: 1.5) : null,
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 8,
                 offset: const Offset(0, 2))
           ],
@@ -240,7 +240,7 @@ class _ExportCard extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: (done ? AppTheme.success : color).withOpacity(0.1),
+                color: (done ? AppTheme.success : color).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: done
@@ -285,3 +285,4 @@ class _ExportCard extends StatelessWidget {
     );
   }
 }
+

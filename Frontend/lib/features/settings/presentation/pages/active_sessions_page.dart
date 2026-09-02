@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/loading_overlay.dart';
 import '../../../../core/widgets/error_snackbar.dart';
@@ -131,13 +131,13 @@ class _ActiveSessionsPageState extends State<ActiveSessionsPage> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(16),
                             border: isCurrent ? Border.all(color: AppTheme.primary, width: 1.5) : null,
-                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
                           ),
                           child: Row(
                             children: [
                               Container(
                                 width: 44, height: 44,
-                                decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
+                                decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
                                 child: Icon(
                                   device.toLowerCase().contains('android') ? Icons.smartphone_rounded
                                       : device.toLowerCase().contains('ios') ? Icons.phone_iphone_rounded
@@ -159,7 +159,7 @@ class _ActiveSessionsPageState extends State<ActiveSessionsPage> {
                               if (isCurrent)
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                                  decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
                                   child: const Text('This Device', style: TextStyle(fontFamily: 'Poppins', color: AppTheme.primary, fontSize: 11, fontWeight: FontWeight.bold)),
                                 )
                               else
@@ -193,3 +193,4 @@ class _ActiveSessionsPageState extends State<ActiveSessionsPage> {
     }
   }
 }
+

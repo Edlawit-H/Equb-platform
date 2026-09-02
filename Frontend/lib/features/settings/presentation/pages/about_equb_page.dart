@@ -92,8 +92,7 @@ class AboutEqubPage extends StatelessWidget {
                   '1. An admin creates an Equb group and sets the contribution amount and cycle length.\n'
                   '2. Members join before the group starts.\n'
                   '3. Once the group starts, each member contributes every cycle.\n'
-                  '4. The system assigns the pooled amount to one member per cycle — '
-                  'either by join-order position or by random selection.\n'
+                  '4. The system assigns the pooled amount to one member per cycle.\n'
                   '5. This repeats until every member has received their payout.',
             ),
 
@@ -106,7 +105,7 @@ class AboutEqubPage extends StatelessWidget {
               body:
                   'Bringing Equb online means transparent contribution tracking, '
                   'automatic payout processing, real-time notifications, and a '
-                  'reliable record of every transaction — removing the manual '
+                  'reliable record of every transaction removing the manual '
                   'coordination and trust risks of paper-based systems.',
             ),
 

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/error_snackbar.dart';
 import '../../data/wallet_service.dart';
@@ -81,7 +81,7 @@ class _FormView extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFFFFF7ED),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+              border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
             ),
             child: Row(
               children: [
@@ -127,7 +127,7 @@ class _FormView extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+                  border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
                 ),
                 child: Text('ETB $amt', style: const TextStyle(fontFamily: 'Poppins', color: AppTheme.primary, fontWeight: FontWeight.w600, fontSize: 13)),
               ),
@@ -171,7 +171,7 @@ class _SuccessView extends StatelessWidget {
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: AppTheme.success.withOpacity(0.12),
+                color: AppTheme.success.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.check_circle_rounded, color: AppTheme.success, size: 56),
@@ -200,3 +200,4 @@ class _SuccessView extends StatelessWidget {
     );
   }
 }
+

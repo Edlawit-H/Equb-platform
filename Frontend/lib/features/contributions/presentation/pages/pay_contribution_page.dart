@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/error_snackbar.dart';
 import '../../data/contributions_service.dart';
@@ -16,6 +16,7 @@ class _PayContributionPageState extends State<PayContributionPage> {
   bool _loading = false;
   bool _success = false;
   bool _failed = false;
+  String _errorMessage = '';
 
   Future<void> _pay() async {
     setState(() { _loading = true; _failed = false; });
@@ -26,9 +27,14 @@ class _PayContributionPageState extends State<PayContributionPage> {
       );
       if (mounted) setState(() { _loading = false; _success = true; });
     } catch (e) {
+      final msg = e.toString().replaceAll('Exception: ', '');
       if (mounted) {
-        setState(() { _loading = false; _failed = true; });
-        ErrorSnackbar.show(context, 'Payment failed. Check your balance.');
+        setState(() {
+          _loading = false;
+          _failed = true;
+          _errorMessage = msg.isNotEmpty ? msg : 'Payment failed. Please try again.';
+        });
+        ErrorSnackbar.show(context, _errorMessage);
       }
     }
   }
@@ -56,7 +62,7 @@ class _PayContributionPageState extends State<PayContributionPage> {
               decoration: BoxDecoration(
                 color: const Color(0xFFFFF7ED),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+                border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
               ),
               child: Row(
                 children: const [
@@ -76,11 +82,11 @@ class _PayContributionPageState extends State<PayContributionPage> {
                 padding: const EdgeInsets.only(top: 14),
                 child: Container(
                   padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(color: AppTheme.error.withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
-                  child: Row(children: const [
+                  decoration: BoxDecoration(color: AppTheme.error.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
+                  child: Row(children: [
                     Icon(Icons.error_outline_rounded, color: AppTheme.error, size: 18),
                     SizedBox(width: 8),
-                    Expanded(child: Text('Payment failed. Please ensure you have sufficient balance.', style: TextStyle(fontFamily: 'Poppins', color: AppTheme.error, fontSize: 12))),
+                    Expanded(child: Text(_errorMessage.isNotEmpty ? _errorMessage : 'Payment failed. Please ensure you have sufficient balance.', style: TextStyle(fontFamily: 'Poppins', color: AppTheme.error, fontSize: 12))),
                   ]),
                 ),
               ),
@@ -119,16 +125,16 @@ class _SummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Payment Summary', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, color: AppTheme.darkText, fontSize: 15)),
           const Divider(height: 24),
-          _Row('Group', contribution['group_name'] ?? '—'),
+          _Row('Group', contribution['group_name'] ?? 'â€”'),
           _Row('Cycle', 'Cycle ${contribution['cycle_number'] ?? 1}'),
-          _Row('Due Date', contribution['due_date'] ?? '—'),
+          _Row('Due Date', contribution['due_date'] ?? 'â€”'),
           const Divider(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -173,7 +179,7 @@ class _SuccessView extends StatelessWidget {
               Container(
                 width: 110,
                 height: 110,
-                decoration: BoxDecoration(color: AppTheme.success.withOpacity(0.12), shape: BoxShape.circle),
+                decoration: BoxDecoration(color: AppTheme.success.withValues(alpha: 0.12), shape: BoxShape.circle),
                 child: const Icon(Icons.check_circle_rounded, color: AppTheme.success, size: 60),
               ),
               const SizedBox(height: 24),
@@ -201,3 +207,4 @@ class _SuccessView extends StatelessWidget {
     );
   }
 }
+

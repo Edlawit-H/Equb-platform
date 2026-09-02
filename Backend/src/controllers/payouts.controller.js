@@ -1,4 +1,4 @@
-import { pool } from '../db/pool.js';
+﻿import { pool } from '../db/pool.js';
 import { AppError } from '../utils/AppError.js';
 import { asyncWrapper } from '../utils/asyncWrapper.js';
 import { notifyPayoutReceived, notifyGroupCompleted } from '../services/notification.service.js';
@@ -534,5 +534,131 @@ export const deletePayout = asyncWrapper(async (req, res) => {
   res.status(200).json({
     status: 'success',
     message: 'Payout cancelled/rejected by admin',
+  });
+});
+
+// Get full payout rotation schedule for a group (all cycles, all members)
+export const getGroupPayoutSchedule = asyncWrapper(async (req, res) => {
+  const groupId = req.params.groupId || req.params.id;
+
+  // Verify the requesting user is a member or admin of this group
+  const { rows: accessCheck } = await pool.query(
+    `SELECT gm.member_id FROM group_members gm
+     WHERE gm.user_id = $1 AND gm.group_id = $2 AND gm.status = 'active'
+     UNION
+     SELECT group_id FROM equb_groups WHERE group_id = $1 AND admin_id = $2`,
+    [req.userId, groupId]
+  );
+
+  if (accessCheck.length === 0 && req.userRole !== 'system_admin') {
+    throw new AppError('You are not a member of this group', 403);
+  }
+
+  // Fetch group info
+  const { rows: groupRows } = await pool.query(
+    `SELECT group_id, group_name, contribution_amount, cycle_duration,
+            current_cycle, total_cycles, max_members, start_date, status
+     FROM equb_groups WHERE group_id = $1 AND is_deleted = FALSE`,
+    [groupId]
+  );
+
+  if (groupRows.length === 0) {
+    throw new AppError('Group not found', 404);
+  }
+
+  const group = groupRows[0];
+  const totalCycles = Number(group.total_cycles ?? group.max_members ?? 1);
+  const currentCycle = Number(group.current_cycle ?? 1);
+  const cycleDuration = Number(group.cycle_duration ?? 7);
+  const contributionAmount = Number(group.contribution_amount ?? 0);
+
+  // Fetch all active members ordered by position
+  const { rows: members } = await pool.query(
+    `SELECT gm.member_id, gm.position_in_cycle, u.full_name, u.phone_number
+     FROM group_members gm
+     JOIN users u ON u.user_id = gm.user_id
+     WHERE gm.group_id = $1 AND gm.status = 'active'
+     ORDER BY gm.position_in_cycle ASC`,
+    [groupId]
+  );
+
+  // Fetch all payouts for this group
+  const { rows: payouts } = await pool.query(
+    `SELECT p.cycle_number, p.payout_amount, p.payout_date, p.status,
+            u.full_name AS recipient_name
+     FROM payouts p
+     JOIN group_members gm ON gm.member_id = p.member_id
+     JOIN users u ON u.user_id = gm.user_id
+     WHERE p.group_id = $1
+     ORDER BY p.cycle_number ASC`,
+    [groupId]
+  );
+
+  // Index payouts by cycle number
+  const payoutByCycle = {};
+  for (const p of payouts) {
+    payoutByCycle[Number(p.cycle_number)] = p;
+  }
+
+  // Index members by position_in_cycle
+  const memberByPosition = {};
+  for (const m of members) {
+    memberByPosition[Number(m.position_in_cycle)] = m;
+  }
+
+  const estimatedPayout = contributionAmount * members.length;
+  const startDate = group.start_date ? new Date(group.start_date) : null;
+
+  // Build one entry per cycle
+  const schedule = [];
+  const effectiveTotal = Math.max(totalCycles, members.length);
+
+  for (let cycle = 1; cycle <= effectiveTotal; cycle++) {
+    const payout = payoutByCycle[cycle];
+    const member = memberByPosition[cycle];
+
+    // Projected date: start_date + (cycle-1) * cycle_duration days
+    let projectedDate = null;
+    if (startDate) {
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + (cycle - 1) * cycleDuration);
+      projectedDate = d.toISOString().split('T')[0];
+    }
+
+    let status = 'upcoming';
+    if (payout?.status === 'completed' || cycle < currentCycle) {
+      status = 'completed';
+    } else if (cycle === currentCycle) {
+      status = 'current';
+    }
+
+    schedule.push({
+      cycle_number: cycle,
+      total_cycles: effectiveTotal,
+      current_cycle: currentCycle,
+      recipient_name: payout?.recipient_name ?? member?.full_name ?? `Member #${cycle}`,
+      recipient_phone: member?.phone_number ?? null,
+      projected_date: payout?.payout_date
+        ? new Date(payout.payout_date).toISOString().split('T')[0]
+        : (projectedDate ?? 'Pending Start'),
+      payout_amount: payout?.payout_amount ?? estimatedPayout,
+      status,
+      payout_id: payout?.payout_id ?? null,
+    });
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      group_id: group.group_id,
+      group_name: group.group_name,
+      group_status: group.status,
+      current_cycle: currentCycle,
+      total_cycles: effectiveTotal,
+      cycle_duration: cycleDuration,
+      contribution_amount: contributionAmount,
+      estimated_payout_per_cycle: estimatedPayout,
+      schedule,
+    },
   });
 });

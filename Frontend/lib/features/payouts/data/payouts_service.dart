@@ -1,4 +1,4 @@
-import 'package:dio/dio.dart';
+﻿import 'package:dio/dio.dart';
 import '../../../core/network/dio_client.dart';
 
 class PayoutsService {
@@ -44,6 +44,12 @@ class PayoutsService {
   Future<Map<String, dynamic>> rejectPayout(String payoutId) async {
     final res = await _dio.post('/payouts/$payoutId/reject');
     return _unwrapData(res.data);
+  }
+
+  Future<Map<String, dynamic>> getGroupSchedule(String groupId) async {
+    final res = await _dio.get('/groups/' + groupId + '/schedule');
+    final body = res.data is Map ? Map<String, dynamic>.from(res.data as Map) : <String, dynamic>{};
+    return body['data'] is Map ? Map<String, dynamic>.from(body['data'] as Map) : body;
   }
 
   Map<String, dynamic> _unwrapData(dynamic data) {

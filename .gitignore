@@ -1,6 +1,4 @@
-# ─────────────────────────────────────────
-# Environment Variables
-# ─────────────────────────────────────────
+﻿# Environment
 .env
 .env.local
 .env.development
@@ -8,25 +6,19 @@
 .env.production
 *.env
 
-# ─────────────────────────────────────────
 # Dependencies
-# ─────────────────────────────────────────
 node_modules/
 Backend/node_modules/
 */node_modules/
 
-# ─────────────────────────────────────────
-# Build Output
-# ─────────────────────────────────────────
+# Build output
 dist/
 build/
 Backend/dist/
 Backend/build/
 *.tsbuildinfo
 
-# ─────────────────────────────────────────
 # Logs
-# ─────────────────────────────────────────
 logs/
 *.log
 npm-debug.log*
@@ -35,28 +27,21 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# ─────────────────────────────────────────
-# Testing
-# ─────────────────────────────────────────
+# Test coverage
 coverage/
 .nyc_output/
 *.lcov
 .jest/
 
-# ─────────────────────────────────────────
 # Editor & IDE
-# ─────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-.DS_Store
 Thumbs.db
 
-# ─────────────────────────────────────────
-# Uploads & Exports
-# ─────────────────────────────────────────
+# Uploads & exports
 uploads/
 exports/
 Backend/uploads/
@@ -64,16 +49,7 @@ Backend/exports/
 *.pdf
 *.xlsx
 
-# ─────────────────────────────────────────
-# Firebase Credentials
-# ─────────────────────────────────────────
-*-firebase-adminsdk-*.json
-serviceAccountKey.json
-firebase-config.json
-
-# ─────────────────────────────────────────
-# OS Generated
-# ─────────────────────────────────────────
+# OS
 .DS_Store
 .DS_Store?
 ._*
@@ -82,16 +58,12 @@ firebase-config.json
 ehthumbs.db
 Desktop.ini
 
-# ─────────────────────────────────────────
-# Temporary Files
-# ─────────────────────────────────────────
+# Temp
 *.tmp
 *.temp
 .cache/
 
-# ─────────────────────────────────────────
 # Kiro IDE
-# ─────────────────────────────────────────
 .kiro/
 
 # Flutter
@@ -105,7 +77,6 @@ Frontend/ios/Pods/
 Frontend/ios/.symlinks/
 Frontend/assets/fonts/
 
-# Local testing and planning docs
-postman_testing_guide.md
-testing_guide.md
-sprint*.md
+# Markdown docs (local only — keep root README)
+*.md
+!README.md

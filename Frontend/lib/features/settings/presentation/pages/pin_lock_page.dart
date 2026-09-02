@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class PinLockPage extends StatefulWidget {
@@ -40,7 +40,7 @@ class _PinLockPageState extends State<PinLockPage> {
             Container(
               width: 80,
               height: 80,
-              decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
               child: const Icon(Icons.lock_rounded, color: AppTheme.primary, size: 40),
             ),
             const SizedBox(height: 20),
@@ -120,3 +120,4 @@ class _Keypad extends StatelessWidget {
     );
   }
 }
+

@@ -1,7 +1,10 @@
-export const getAdminDashboard = async (_req, _res, _next) => {};
-export const getAllUsers = async (_req, _res, _next) => {};
-export const getAllGroups = async (_req, _res, _next) => {};
-export const deleteUser = async (_req, _res, _next) => {};
-export const updateUserStatus = async (_req, _res, _next) => {};
-export const getAuditLogs = async (_req, _res, _next) => {};
-export const getSystemHealth = async (_req, _res, _next) => {};
+﻿const notImplemented = (_req, res) =>
+  res.status(501).json({ status: "error", message: "Not implemented" });
+
+export const getAdminDashboard = notImplemented;
+export const getAllUsers      = notImplemented;
+export const getAllGroups     = notImplemented;
+export const deleteUser       = notImplemented;
+export const updateUserStatus = notImplemented;
+export const getAuditLogs     = notImplemented;
+export const getSystemHealth  = notImplemented;
