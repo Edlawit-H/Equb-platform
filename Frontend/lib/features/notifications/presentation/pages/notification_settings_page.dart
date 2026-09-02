@@ -1,11 +1,12 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../data/notifications_repository.dart';
 
 class NotificationSettingsPage extends StatefulWidget {
   const NotificationSettingsPage({super.key});
 
   @override
-  State<NotificationSettingsPage> createState() => _NotificationSettingsPageState();
+  State<NotificationSettingsPage> createState() =>
+      _NotificationSettingsPageState();
 }
 
 class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
@@ -52,7 +53,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
 
     try {
       await _repository.updateSettings({
-        'payment_reminders': key == 'payment_reminders' ? value : _paymentReminders,
+        'payment_reminders':
+            key == 'payment_reminders' ? value : _paymentReminders,
         'payout_alerts': key == 'payout_alerts' ? value : _payoutAlerts,
         'group_activity': key == 'group_activity' ? value : _groupActivity,
       });
@@ -69,7 +71,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Failed to update setting: ${e.toString().replaceAll("Exception: ", "")}"),
+          content: Text(
+              "Failed to update setting: ${e.toString().replaceAll("Exception: ", "")}"),
           backgroundColor: const Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -105,7 +108,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: primaryOrange, strokeWidth: 2.5),
+              child: CircularProgressIndicator(
+                  color: primaryOrange, strokeWidth: 2.5),
             )
           : SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -142,9 +146,11 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                           iconBg: const Color(0xFFFFEDD5),
                           iconColor: const Color(0xFFEA580C),
                           title: "Payment Reminders",
-                          subtitle: "Receive reminders before group contribution deadlines.",
+                          subtitle:
+                              "Receive reminders before group contribution deadlines.",
                           value: _paymentReminders,
-                          onChanged: (val) => _updateSetting('payment_reminders', val),
+                          onChanged: (val) =>
+                              _updateSetting('payment_reminders', val),
                         ),
                         const Divider(height: 1, indent: 72, endIndent: 16),
                         _buildSwitchTile(
@@ -152,9 +158,11 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                           iconBg: const Color(0xFFDCFCE7),
                           iconColor: const Color(0xFF16A34A),
                           title: "Payout Alerts",
-                          subtitle: "Get notified when you receive an Equb payout.",
+                          subtitle:
+                              "Get notified when you receive an Equb payout.",
                           value: _payoutAlerts,
-                          onChanged: (val) => _updateSetting('payout_alerts', val),
+                          onChanged: (val) =>
+                              _updateSetting('payout_alerts', val),
                         ),
                         const Divider(height: 1, indent: 72, endIndent: 16),
                         _buildSwitchTile(
@@ -162,9 +170,11 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                           iconBg: const Color(0xFFE0F2FE),
                           iconColor: const Color(0xFF0284C7),
                           title: "Group Activity",
-                          subtitle: "Updates about member joins, cycle starts, and completions.",
+                          subtitle:
+                              "Get notified when a member joins your group, the group starts, a contribution is made, or a payout is disbursed.",
                           value: _groupActivity,
-                          onChanged: (val) => _updateSetting('group_activity', val),
+                          onChanged: (val) =>
+                              _updateSetting('group_activity', val),
                         ),
                       ],
                     ),

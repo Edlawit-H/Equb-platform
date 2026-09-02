@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/group_service.dart';
 import '../../../contributions/data/contributions_service.dart';
@@ -1272,9 +1272,59 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
     );
   }
 
-  /// Activity Tab (Clean Transaction & Payout Stream)
+  /// Activity Tab — member events + contributions + payouts chronologically
   Widget _buildLoansTab() {
-    if (_transactions.isEmpty) {
+    // Build a unified event list from group data + members + transactions
+    final events = <Map<String, dynamic>>[];
+
+    // Group started event
+    final startDate = _groupData['start_date']?.toString();
+    if (startDate != null && startDate.isNotEmpty) {
+      events.add({
+        'type': 'group_started',
+        'label': 'Group Started',
+        'sub': 'Cycle 1 began — contributions are now active',
+        'date': startDate.split('T').first,
+        'sort': startDate,
+      });
+    }
+
+    // Member join events — use joined_at if present, else fall back to start_date
+    for (final m in _members) {
+      final joinedAt = m['joined_at']?.toString() ?? m['created_at']?.toString() ?? startDate ?? '';
+      final name = m['full_name']?.toString() ?? 'Member';
+      final role = m['role']?.toString() ?? 'member';
+      events.add({
+        'type': 'member_joined',
+        'label': '$name joined',
+        'sub': role == 'admin' ? 'Group Creator' : 'Member',
+        'date': joinedAt.split('T').first,
+        'sort': joinedAt,
+      });
+    }
+
+    // Contributions and payouts from transactions
+    for (final t in _transactions) {
+      final type = t['type']?.toString() ?? '';
+      final isPayout = type == 'payout_credit' || type == 'payout';
+      final memberName = t['full_name']?.toString() ?? 'Member';
+      final amount = t['amount'] ?? 0;
+      final createdAt = t['created_at']?.toString() ?? '';
+      events.add({
+        'type': isPayout ? 'payout' : 'contribution',
+        'label': isPayout ? 'Payout Disbursed' : 'Contribution Paid',
+        'sub': '$memberName • ETB $amount',
+        'date': createdAt.split('T').first,
+        'sort': createdAt,
+        'is_payout': isPayout,
+        'amount': amount,
+      });
+    }
+
+    // Sort chronologically (oldest first)
+    events.sort((a, b) => (a['sort'] ?? '').compareTo(b['sort'] ?? ''));
+
+    if (events.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -1285,22 +1335,13 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
               const SizedBox(height: 14),
               const Text(
                 'No activity recorded yet',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: textDark,
-                ),
+                style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16, color: textDark),
               ),
               const SizedBox(height: 6),
               const Text(
-                'Contributions and payouts will be listed here as rounds progress.',
+                'Member joins, group start, contributions and payouts will appear here.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  color: textMuted,
-                  fontSize: 12.5,
-                ),
+                style: TextStyle(fontFamily: 'Poppins', color: textMuted, fontSize: 12.5),
               ),
             ],
           ),
@@ -1310,15 +1351,37 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
 
     return ListView.separated(
       padding: const EdgeInsets.all(20),
-      itemCount: _transactions.length,
+      itemCount: events.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
-        final transaction = _transactions[index];
-        final type = transaction['type']?.toString() ?? 'transaction';
-        final isPayout = type == 'payout_credit' || type == 'payout';
-        final memberName = transaction['full_name']?.toString() ?? 'Member';
-        final amount = transaction['amount'] ?? 0;
-        final dateStr = (transaction['created_at'] ?? '').toString().split('T').first;
+        final e = events[index];
+        final type = e['type'] as String;
+
+        final Color iconColor;
+        final Color iconBg;
+        final IconData iconData;
+
+        switch (type) {
+          case 'group_started':
+            iconColor = primaryOrange;
+            iconBg = const Color(0xFFFFF7ED);
+            iconData = Icons.flag_rounded;
+            break;
+          case 'member_joined':
+            iconColor = const Color(0xFF0284C7);
+            iconBg = const Color(0xFFE0F2FE);
+            iconData = Icons.person_add_rounded;
+            break;
+          case 'payout':
+            iconColor = activeGreen;
+            iconBg = activeGreenBg;
+            iconData = Icons.call_received_rounded;
+            break;
+          default:
+            iconColor = primaryOrange;
+            iconBg = const Color(0xFFFFF7ED);
+            iconData = Icons.payments_rounded;
+        }
 
         return Container(
           padding: const EdgeInsets.all(14),
@@ -1330,50 +1393,20 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
           child: Row(
             children: [
               Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: (isPayout ? activeGreen : primaryOrange).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  isPayout ? Icons.call_received_rounded : Icons.payments_rounded,
-                  color: isPayout ? activeGreen : primaryOrange,
-                  size: 22,
-                ),
+                width: 42, height: 42,
+                decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(12)),
+                child: Icon(iconData, color: iconColor, size: 22),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      isPayout ? 'Payout Disbursed' : 'Contribution Paid',
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                        color: textDark,
-                      ),
-                    ),
-                    Text(
-                      '$memberName ${dateStr.isNotEmpty ? "• $dateStr" : ""}',
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        color: textMuted,
-                        fontSize: 12,
-                      ),
-                    ),
+                    Text(e['label'] as String,
+                      style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w700, fontSize: 14, color: textDark)),
+                    Text('${e['sub']}${e['date'] != null && (e['date'] as String).isNotEmpty ? " • ${e['date']}" : ""}',
+                      style: const TextStyle(fontFamily: 'Poppins', color: textMuted, fontSize: 12)),
                   ],
-                ),
-              ),
-              Text(
-                '${isPayout ? '+' : '-'}ETB $amount',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14,
-                  color: isPayout ? activeGreen : textDark,
                 ),
               ),
             ],
@@ -1382,7 +1415,6 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
       },
     );
   }
-
   bool _isStarting = false;
 
   Future<void> _handleStartGroup() async {
