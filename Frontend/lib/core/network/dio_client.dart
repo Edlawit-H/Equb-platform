@@ -1,34 +1,28 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:equb_app/core/constants/api_constants.dart';
 
 const _storage = FlutterSecureStorage();
 
-// Shared Future to prevent duplicate refresh token requests when multiple 401s occur simultaneously
 Future<String?>? _refreshTokenFuture;
 
 Future<String?> _performTokenRefresh() async {
   try {
     final refreshToken = await _storage.read(key: 'refresh_token');
-    if (refreshToken == null || refreshToken.isEmpty) {
-      return null;
-    }
+    if (refreshToken == null || refreshToken.isEmpty) return null;
 
-    // Use a clean Dio instance with no interceptors to avoid recursive loops
     final refreshDio = Dio(BaseOptions(
       baseUrl: ApiConstants.baseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
+      // Generous timeout — Render free tier cold start can take 30-60s
+      connectTimeout: const Duration(seconds: 60),
+      receiveTimeout: const Duration(seconds: 30),
       headers: {'Content-Type': 'application/json'},
     ));
 
     final response = await refreshDio.post(
       '/auth/refresh-token',
-      data: {
-        'refreshToken': refreshToken,
-        'refresh_token': refreshToken,
-      },
+      data: {'refreshToken': refreshToken, 'refresh_token': refreshToken},
     );
 
     if (response.statusCode == 200 && response.data != null) {
@@ -37,7 +31,6 @@ Future<String?> _performTokenRefresh() async {
           data['data']?['token'] ??
           data['accessToken'] ??
           data['token'];
-
       final newRefreshToken = data['data']?['refreshToken'] ??
           data['data']?['refresh_token'] ??
           data['refreshToken'] ??
@@ -51,8 +44,7 @@ Future<String?> _performTokenRefresh() async {
         return newAccessToken.toString();
       }
     }
-  } catch (e) {
-    // If refresh token fails (expired or invalid), clear stored tokens
+  } catch (_) {
     await _storage.delete(key: 'access_token');
     await _storage.delete(key: 'refresh_token');
   }
@@ -62,8 +54,9 @@ Future<String?> _performTokenRefresh() async {
 Dio createDioClient() {
   final dio = Dio(BaseOptions(
     baseUrl: ApiConstants.baseUrl,
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 10),
+    // 60s connect — handles Render free tier cold start (can take up to 60s)
+    connectTimeout: const Duration(seconds: 60),
+    receiveTimeout: const Duration(seconds: 30),
     headers: {'Content-Type': 'application/json'},
   ));
 
@@ -89,11 +82,25 @@ Dio createDioClient() {
 
       final alreadyRetried = error.requestOptions.extra['_retry'] == true;
 
+      // Auto-retry once on connection timeout (Render cold start)
+      final isTimeout = error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.receiveTimeout ||
+          error.type == DioExceptionType.sendTimeout;
+
+      if (isTimeout && !alreadyRetried) {
+        error.requestOptions.extra['_retry'] = true;
+        try {
+          final retryResponse = await dio.fetch(error.requestOptions);
+          return handler.resolve(retryResponse);
+        } on DioException catch (retryError) {
+          return handler.next(retryError);
+        }
+      }
+
+      // Refresh access token on 401
       if (statusCode == 401 && !isAuthEndpoint && !alreadyRetried) {
-        // Mark request as retried to avoid infinite loops
         error.requestOptions.extra['_retry'] = true;
 
-        // Synchronize token refresh across concurrent requests
         _refreshTokenFuture ??= _performTokenRefresh().whenComplete(() {
           _refreshTokenFuture = null;
         });
