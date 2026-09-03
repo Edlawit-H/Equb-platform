@@ -37,15 +37,17 @@ class _OtpScreenState extends State<OtpScreen> {
   Timer? _timer;
   int _resendCountdown = 60;
   bool _canResend = false;
+  String? _currentOtp;
 
   @override
   void initState() {
     super.initState();
     _startResendTimer();
-    if (widget.initialOtp != null && widget.initialOtp!.isNotEmpty) {
+    _currentOtp = widget.initialOtp;
+    if (_currentOtp != null && _currentOtp!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          showTestOtpPopup(context, otp: widget.initialOtp!, title: "Registration OTP");
+          showTestOtpPopup(context, otp: _currentOtp!, title: "Registration OTP");
         }
       });
     }
@@ -201,6 +203,9 @@ class _OtpScreenState extends State<OtpScreen> {
 
         final otpVal = (res['data']?['otp'] ?? res['otp'])?.toString();
         if (otpVal != null && otpVal.isNotEmpty) {
+          setState(() {
+            _currentOtp = otpVal;
+          });
           showTestOtpPopup(context, otp: otpVal, title: "Registration OTP");
         }
       }
@@ -289,7 +294,85 @@ class _OtpScreenState extends State<OtpScreen> {
                 ),
               ),
 
-              const SizedBox(height: 36),
+              const SizedBox(height: 18),
+
+              // Visible OTP Card (100% visible on-screen for testing/deployment)
+              if (_currentOtp != null && _currentOtp!.isNotEmpty) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF7ED),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: primaryColor, width: 1.5),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.mark_email_read_rounded, color: primaryColor, size: 20),
+                          const SizedBox(width: 8),
+                          const Text(
+                            "VERIFICATION CODE",
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                              letterSpacing: 1,
+                              color: Color(0xFF9A3412),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      SelectableText(
+                        _currentOtp!,
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w900,
+                          fontSize: 32,
+                          letterSpacing: 6,
+                          color: primaryColor,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      InkWell(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: _currentOtp!));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Code copied to clipboard!"),
+                              duration: Duration(seconds: 1),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(Icons.copy_rounded, color: primaryColor, size: 16),
+                              SizedBox(width: 6),
+                              Text(
+                                "Copy Code",
+                                style: TextStyle(
+                                  color: primaryColor,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+              ],
 
               // 6 OTP Input Boxes
               Row(

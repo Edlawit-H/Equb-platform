@@ -37,6 +37,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   bool _isLoading = false;
 
   String? _maskedPhone;
+  String? _currentOtp;
 
   // Timer for OTP resend
   Timer? _timer;
@@ -162,9 +163,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       _startResendTimer();
       _showSuccess("Verification code sent to your registered phone number!");
 
-      // If test OTP is returned, display test alert popup
+      // If test OTP is returned, display test alert popup and banner
       final otpVal = (res['otp'] ?? res['otp_code'] ?? res['data']?['otp'])?.toString();
       if (otpVal != null && otpVal.isNotEmpty) {
+        setState(() {
+          _currentOtp = otpVal;
+        });
         showTestOtpPopup(context, otp: otpVal, title: "Password Change OTP");
       }
 
@@ -206,6 +210,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
       final otpVal = (res['otp'] ?? res['otp_code'] ?? res['data']?['otp'])?.toString();
       if (otpVal != null && otpVal.isNotEmpty) {
+        setState(() {
+          _currentOtp = otpVal;
+        });
         showTestOtpPopup(context, otp: otpVal, title: "Password Change OTP");
       }
     } catch (e) {
@@ -537,7 +544,85 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           ),
         ),
 
-        const SizedBox(height: 32),
+        const SizedBox(height: 18),
+
+        // Visible OTP Card (100% visible on-screen for testing/deployment)
+        if (_currentOtp != null && _currentOtp!.isNotEmpty) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: primaryOrange, width: 1.5),
+            ),
+            child: Column(
+              children: [
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.mark_email_read_rounded, color: headerOrange, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      "VERIFICATION CODE",
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        letterSpacing: 1,
+                        color: Color(0xFF9A3412),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SelectableText(
+                  _currentOtp!,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w900,
+                    fontSize: 32,
+                    letterSpacing: 6,
+                    color: headerOrange,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: _currentOtp!));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Code copied to clipboard!"),
+                        duration: Duration(seconds: 1),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.copy_rounded, color: headerOrange, size: 16),
+                        SizedBox(width: 6),
+                        Text(
+                          "Copy Code",
+                          style: TextStyle(
+                            color: headerOrange,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+        ],
 
         // 6 OTP Digit Boxes
         Row(
