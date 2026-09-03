@@ -18,6 +18,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final confirmPasswordController = TextEditingController();
 
   bool isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
@@ -151,11 +153,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         _buildTextField(
                           controller: passwordController,
                           hintText: "••••••••",
-                          obscureText: true,
+                          obscureText: _obscurePassword,
                           hintColor: hintColor,
                           fillColor: inputFillColor,
                           borderColor: borderColor,
                           primaryColor: primaryColor,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              color: hintColor,
+                              size: 20,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                          ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return "Enter password";
@@ -174,11 +190,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         _buildTextField(
                           controller: confirmPasswordController,
                           hintText: "••••••••",
-                          obscureText: true,
+                          obscureText: _obscureConfirmPassword,
                           hintColor: hintColor,
                           fillColor: inputFillColor,
                           borderColor: borderColor,
                           primaryColor: primaryColor,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscureConfirmPassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              color: hintColor,
+                              size: 20,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscureConfirmPassword = !_obscureConfirmPassword;
+                              });
+                            },
+                          ),
                           validator: (value) {
                             if (value != passwordController.text) {
                               return "Passwords do not match";
@@ -299,6 +329,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     required Color borderColor,
     required Color primaryColor,
     bool obscureText = false,
+    Widget? suffixIcon,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
   }) {
@@ -324,6 +355,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         fillColor: fillColor,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        suffixIcon: suffixIcon,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: borderColor, width: 1.2),

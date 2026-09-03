@@ -1,4 +1,4 @@
-﻿import pool from "../config/db.js";
+import pool from "../config/db.js";
 import bcrypt from "bcrypt";
 import { findUserByPhone, findUserByPhoneForLogin, updatePassword } from "../models/users.model.js";
 import { createOTP, findValidOTP, findValidResetOTP } from "../models/otp.model.js";
