@@ -53,9 +53,9 @@ export async function updateMyProfile(userId, data) {
     if (data.email !== undefined) {
         data.email = data.email.trim();
 
-    if (data.email === "") {
-        throw new Error("Email cannot be empty");
-    }
+        if (data.email === "") {
+            throw new Error("Email cannot be empty");
+        }
 
         const { rows: emailRows } = await pool.query(
             `
@@ -185,7 +185,8 @@ export async function requestPasswordChangeOTP(userId, data) {
         expires_at: expiresAt,
     });
 
-    if (process.env.NODE_ENV !== 'production') console.log('Password Change OTP:', otp);
+    //if (process.env.NODE_ENV !== 'production')
+    console.log('Password Change OTP:', otp);
 
     const phoneStr = user.phone_number || '';
     const maskedPhone = phoneStr.length > 4
