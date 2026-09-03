@@ -113,7 +113,7 @@ class _ExportReportPageState extends State<ExportReportPage> {
                                 color: Colors.white,
                                 fontSize: 18)),
                         Text(
-                            'Tap to download” file saves to your Downloads folder',
+                            'Tap to download- file saves to your Downloads folder',
                             style: TextStyle(
                                 fontFamily: 'Poppins',
                                 color: Colors.white70,
@@ -139,11 +139,11 @@ class _ExportReportPageState extends State<ExportReportPage> {
               icon: Icons.picture_as_pdf_rounded,
               title: 'Financial Report (.txt)',
               subtitle:
-                  'Full formatted transaction report” downloads instantly',
+                  'Full formatted transaction report- downloads instantly',
               color: AppTheme.error,
               loading: _loadingPdf,
               done: _pdfDone,
-              doneLabel: 'Downloaded“',
+              doneLabel: 'Downloaded',
               onTap: _loadingPdf ? null : _exportPdf,
             ),
 
@@ -153,11 +153,11 @@ class _ExportReportPageState extends State<ExportReportPage> {
             _ExportCard(
               icon: Icons.table_chart_rounded,
               title: 'CSV Spreadsheet (.csv)',
-              subtitle: 'All transactions” open in Excel or Google Sheets',
+              subtitle: 'All transactions open in Excel or Google Sheets',
               color: AppTheme.secondary,
               loading: _loadingExcel,
               done: _excelDone,
-              doneLabel: 'Downloaded“',
+              doneLabel: 'Downloaded',
               onTap: _loadingExcel ? null : _exportExcel,
             ),
 
