@@ -199,6 +199,7 @@ class _OtpScreenState extends State<OtpScreen> {
     try {
       if (widget.phone.isNotEmpty) {
         final res = await ApiService.resendRegistrationOTP(phone: widget.phone);
+        print("RESEND RESPONSE: $res");
         if (!mounted) return;
 
         final otpVal = (res['data']?['otp'] ?? res['otp'])?.toString();
@@ -206,6 +207,7 @@ class _OtpScreenState extends State<OtpScreen> {
           setState(() {
             _currentOtp = otpVal;
           });
+          print("SHOWING OTP POPUP: $otpVal");
           showTestOtpPopup(context, otp: otpVal, title: "Registration OTP");
         }
       }
