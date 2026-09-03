@@ -24,7 +24,8 @@ export const registerUser = async (data) => {
     expires_at: new Date(Date.now() + 5 * 60 * 1000),
   });
 
-  if (process.env.NODE_ENV !== "production") console.log("OTP:", otp);
+  //if (process.env.NODE_ENV !== "production") 
+  console.log("OTP:", otp);
 
   return { message: "OTP generated", otp };
 };
@@ -111,7 +112,8 @@ export const resendRegistrationOTP = async (data) => {
     expires_at: new Date(Date.now() + 5 * 60 * 1000),
   });
 
-  if (process.env.NODE_ENV !== "production") console.log("New OTP:", otp);
+  //if (process.env.NODE_ENV !== "production") 
+  console.log("New OTP:", otp);
 
   return { message: "OTP resent successfully", otp };
 };
@@ -128,7 +130,8 @@ export const requestPasswordReset = async (phone_number) => {
     expires_at: new Date(Date.now() + 5 * 60 * 1000),
   });
 
-  if (process.env.NODE_ENV !== "production") console.log("Reset OTP:", otp);
+  //if (process.env.NODE_ENV !== "production")
+  console.log("Reset OTP:", otp);
 
   return { message: "OTP sent", otp };
 };
