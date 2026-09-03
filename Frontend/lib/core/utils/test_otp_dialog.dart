@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -8,9 +8,9 @@ Future<void> showTestOtpPopup(
   BuildContext context, {
   required String otp,
   String title = "Verification Code",
-  String subtitle = "Use this code to complete verification. This dialog only appears in development builds.",
+  String subtitle = "Use this code to complete verification. (Displayed on-screen for testing).",
 }) async {
-  if (!kDebugMode || otp.trim().isEmpty) return;
+  if (otp.trim().isEmpty) return;
 
   await showDialog(
     context: context,
