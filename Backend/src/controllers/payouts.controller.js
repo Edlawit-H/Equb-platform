@@ -665,12 +665,22 @@ export const getGroupPayoutSchedule = asyncWrapper(async (req, res) => {
       }
     }
 
-    // Projected date: start_date + (cycle-1) * cycle_duration days
+    // Projected date: best-case estimation for when this cycle's payout will arrive.
+    // For completed cycles, shows the actual payout date.
+    // For upcoming cycles, projects forward from current cycle_end_date so delays shift realistic expectations.
     let projectedDate = payoutDate;
-    if (!projectedDate && startDate) {
-      const d = new Date(startDate);
-      d.setDate(d.getDate() + (cycle - 1) * cycleDuration);
-      projectedDate = d.toISOString().split('T')[0];
+    if (!projectedDate) {
+      if (cycle === currentCycle && group.cycle_end_date) {
+        projectedDate = new Date(group.cycle_end_date).toISOString().split('T')[0];
+      } else if (cycle > currentCycle && group.cycle_end_date) {
+        const d = new Date(group.cycle_end_date);
+        d.setDate(d.getDate() + (cycle - currentCycle) * cycleDuration);
+        projectedDate = d.toISOString().split('T')[0];
+      } else if (startDate) {
+        const d = new Date(startDate);
+        d.setDate(d.getDate() + (cycle - 1) * cycleDuration);
+        projectedDate = d.toISOString().split('T')[0];
+      }
     }
 
     schedule.push({
