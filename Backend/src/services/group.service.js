@@ -152,8 +152,7 @@ export async function joinGroup(groupIdOrCode, userId) {
         SELECT
             group_id,
             max_members,
-            status,
-            start_date
+            status
         FROM equb_groups
         WHERE (${isUuid ? 'group_id = $1' : 'invitation_code = $1'})
         AND is_deleted = FALSE;
@@ -162,15 +161,14 @@ export async function joinGroup(groupIdOrCode, userId) {
     );
 
     if (rows.length !== 1) {
-        throw new Error("Group not found with code: " + groupIdOrCode);
+        throw new AppError("Group not found with the provided code.", 404);
     }
 
     const group = rows[0];
     const groupId = group.group_id;
 
-    if (group.status === 'active' || group.status === 'completed' ||
-        (group.start_date && new Date(group.start_date) <= new Date())) {
-        throw new Error("Cannot join a group that has already started");
+    if (group.status === 'active' || group.status === 'completed') {
+        throw new AppError("This group is no longer accepting new members.", 409);
     }
 
     const { rows: payoutRows } = await pool.query(
@@ -178,11 +176,11 @@ export async function joinGroup(groupIdOrCode, userId) {
         [groupId]
     );
     if (payoutRows.length > 0) {
-        throw new Error("Cannot join a group after a payout has been issued");
+        throw new AppError("This group is no longer accepting new members.", 409);
     }
 
     if (await isMember(userId, groupId)) {
-        throw new Error("User is already a member");
+        throw new AppError("You are already a member of this group.", 409);
     }
     // Check if group is full
     const { rows: countRows } = await pool.query(
