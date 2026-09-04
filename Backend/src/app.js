@@ -21,6 +21,10 @@ dotenv.config();
 
 const app = express();
 
+// Render sits behind one trusted reverse proxy. Preserve the real client IP
+// so rate limits are not shared by every user behind the proxy.
+app.set('trust proxy', 1);
+
 app.use(helmet());
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
@@ -55,7 +59,7 @@ app.use(cors({
 }));
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: 1000,
   standardHeaders: true,
   legacyHeaders: false,
 }));

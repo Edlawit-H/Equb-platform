@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { rateLimit } from 'express-rate-limit';
 import {
  register,
  verifyOTP,
@@ -14,18 +15,25 @@ import { protect } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
+const authRateLimit = rateLimit({
+	windowMs: 15 * 60 * 1000,
+	max: 30,
+	standardHeaders: true,
+	legacyHeaders: false,
+});
 
-router.post("/register", register);
+
+router.post("/register", authRateLimit, register);
 
 router.post("/verify-otp", verifyOTP);
 
-router.post("/resend-otp", resendOTP);
+router.post("/resend-otp", authRateLimit, resendOTP);
 
-router.post("/login", login);
+router.post("/login", authRateLimit, login);
 
-router.post("/forgot-password",forgotPassword);
+router.post("/forgot-password", authRateLimit, forgotPassword);
 
-router.post("/reset-password",resetPassword);
+router.post("/reset-password", authRateLimit, resetPassword);
 
 router.post("/refresh-token", refreshToken);
 
