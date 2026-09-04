@@ -58,7 +58,11 @@ export const resetPassword = async (req, res, next) => {
 export const resendOTP = async (req, res, next) => {
   try {
     const result = await authService.resendRegistrationOTP(req.body);
-    res.status(200).json({ success: true, message: result.message });
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      ...(result.otp !== undefined && { otp: result.otp }),
+    });
   } catch (err) {
     next(err);
   }
