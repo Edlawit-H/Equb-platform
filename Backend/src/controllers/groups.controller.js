@@ -89,6 +89,12 @@ export async function joinGroup(req, res, next) {
             data: member,
         });
     } catch (err) {
+        if (err.message === 'Group is full') {
+            return res.status(409).json({
+                status: 'error',
+                message: 'This group is full. It has reached its maximum number of members.',
+            });
+        }
         next(err);
     }
 }
@@ -109,6 +115,12 @@ export async function joinGroupByCode(req, res, next) {
             data: member,
         });
     } catch (err) {
+        if (err.message === 'Group is full') {
+            return res.status(409).json({
+                status: 'error',
+                message: 'This group is full. It has reached its maximum number of members.',
+            });
+        }
         next(err);
     }
 }

@@ -1,6 +1,7 @@
 import pool from "../config/db.js";
 import crypto from "crypto";
 import { notifyGroupStarted, notifyPaymentReminder } from "./notification.service.js";
+import { AppError } from "../utils/AppError.js";
 
 function generateInvitationCode() {
     return crypto.randomBytes(4).toString('hex').toUpperCase();
@@ -151,7 +152,8 @@ export async function joinGroup(groupIdOrCode, userId) {
         SELECT
             group_id,
             max_members,
-            status
+            status,
+            start_date
         FROM equb_groups
         WHERE (${isUuid ? 'group_id = $1' : 'invitation_code = $1'})
         AND is_deleted = FALSE;
@@ -195,7 +197,10 @@ export async function joinGroup(groupIdOrCode, userId) {
     const memberCount = Number(countRows[0].member_count);
 
     if (memberCount >= group.max_members) {
-        throw new Error("Group is full");
+        throw new AppError(
+            "This group is full. It has reached its maximum number of members.",
+            409
+        );
     }
 
     const nextPosition = memberCount + 1;
