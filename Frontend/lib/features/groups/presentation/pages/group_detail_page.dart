@@ -264,7 +264,7 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
                       : () async {
                           setModalState(() => isPaying = true);
                           try {
-                            final cycle = widget.group?["current_cycle"] ?? 1;
+                            final cycle = _groupData["current_cycle"] ?? 1;
                             final cycleNum = cycle is int
                                 ? cycle
                                 : int.tryParse('$cycle') ?? 1;
@@ -1321,6 +1321,19 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
             : 'On-time cycle — contributions are now active',
         'date': actualStartIso.split('T').first,
         'sort': actualStartIso,
+      });
+    }
+
+    // Older groups may not have cycle 1 timestamps in the schedule response.
+    if (firstStart != null &&
+        !_cycleSchedule.any((item) => '${item['cycle_number']}' == '1')) {
+      final firstStartIso = firstStart.toIso8601String();
+      events.add({
+        'type': 'group_started',
+        'label': 'Group Started',
+        'sub': 'On-time cycle — contributions are now active',
+        'date': firstStartIso.split('T').first,
+        'sort': firstStartIso,
       });
     }
 
