@@ -196,7 +196,7 @@ export async function requestPasswordChangeOTP(userId, data) {
         message: "Verification code sent successfully",
         phone: user.phone_number,
         masked_phone: maskedPhone,
-        ...(process.env.NODE_ENV !== 'production' ? { otp } : {}),
+        otp,
     };
 }
 
