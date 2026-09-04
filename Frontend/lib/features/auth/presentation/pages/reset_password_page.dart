@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/api_service.dart';
@@ -141,9 +141,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
     try {
       if (widget.phone.isNotEmpty) {
-        await ApiService.requestPasswordReset(phone: widget.phone);
+        final res = await ApiService.requestPasswordReset(phone: widget.phone);
+        if (!mounted) return;
+        final otpVal = (res['data']?['otp'] ?? res['otp'])?.toString();
+        if (otpVal != null && otpVal.isNotEmpty) {
+          showTestOtpPopup(context, otp: otpVal, title: 'Reset Password OTP');
+        }
       }
-
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(

@@ -1,4 +1,4 @@
-﻿import cron from 'node-cron';
+import cron from 'node-cron';
 import { pool } from '../db/pool.js';
 import { notifyOverdueAlert, notifyPaymentReminder } from './notification.service.js';
 import { advanceCycle } from './payout.service.js';
@@ -68,21 +68,34 @@ export const startCronJobs = () => {
     await processPaymentReminders();
   });
 
-  // Every hour: advance cycle when cycle_end_date passed AND payout completed
+  // Every hour: advance cycle ONLY when the current cycle's payout is complete
+  // AND all contributions for that cycle have been paid.
+  // Date (cycle_end_date) is a guard to prevent EARLY advancement only —
+  // being late is fine, late cycles simply wait until all contributions are paid.
   cron.schedule('30 * * * *', async () => {
     try {
-      const { rows: expiredGroups } = await pool.query(
-        `SELECT eg.group_id FROM equb_groups eg
-         WHERE eg.status='active'
-           AND eg.cycle_end_date < CURRENT_DATE
+      // Find groups where:
+      //  1. The current cycle's payout is 'completed' (payout has been given out)
+      //  2. All contributions for the current cycle are 'paid' (no pending/overdue)
+      //  3. The cycle_end_date has been reached OR passed (don't advance before the cycle period ends)
+      const { rows: readyGroups } = await pool.query(
+        `SELECT eg.group_id, eg.current_cycle FROM equb_groups eg
+         WHERE eg.status = 'active'
+           AND eg.cycle_end_date <= CURRENT_DATE
            AND EXISTS (
              SELECT 1 FROM payouts p
-             WHERE p.group_id=eg.group_id
-               AND p.cycle_number=eg.current_cycle
-               AND p.status='completed'
+             WHERE p.group_id = eg.group_id
+               AND p.cycle_number = eg.current_cycle
+               AND p.status = 'completed'
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM contributions c
+             WHERE c.group_id = eg.group_id
+               AND c.cycle_number = eg.current_cycle
+               AND c.status != 'paid'
            )`
       );
-      for (const group of expiredGroups) {
+      for (const group of readyGroups) {
         await advanceCycle(group.group_id).catch((err) => {
           console.error(`advanceCycle failed for group ${group.group_id}:`, err.message);
         });

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/group_service.dart';
 import '../../../contributions/data/contributions_service.dart';
@@ -766,7 +766,6 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
         final m = _members[i];
         final name = m["full_name"] ?? m["name"] ?? "Member ${i + 1}";
         final role = (m["role"] ?? "member").toString().toUpperCase();
-        final isPaid = m["has_paid"] == true || m["status"] == "paid";
         final payoutPosition = m["payout_position"] ?? (i + 1);
 
         return Container(
@@ -811,22 +810,6 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
                       ),
                     ),
                   ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isPaid ? activeGreenBg : const Color(0xFFFFF7ED),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  isPaid ? "PAID" : "PENDING",
-                  style: TextStyle(
-                    color: isPaid ? activeGreen : primaryOrange,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    fontFamily: 'Poppins',
-                  ),
                 ),
               ),
             ],

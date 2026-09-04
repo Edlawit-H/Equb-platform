@@ -1,4 +1,4 @@
-﻿import { pool } from '../db/pool.js';
+import { pool } from '../db/pool.js';
 import { AppError } from '../utils/AppError.js';
 import { asyncWrapper } from '../utils/asyncWrapper.js';
 import { notifyPayoutReceived, notifyGroupCompleted } from '../services/notification.service.js';
@@ -135,10 +135,11 @@ export const getPayoutSchedule = asyncWrapper(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT
        gm.group_id,
+       gm.member_id,
        eg.group_name,
        gm.position_in_cycle,
        eg.current_cycle,
-      eg.total_cycles,
+       eg.total_cycles,
        eg.contribution_amount,
        eg.cycle_duration,
        eg.max_members,
@@ -147,9 +148,14 @@ export const getPayoutSchedule = asyncWrapper(async (req, res) => {
        (
          SELECT COUNT(*)::int FROM group_members
          WHERE group_id = eg.group_id AND status = 'active'
-       ) AS active_members_count
+       ) AS active_members_count,
+       p.payout_id,
+       p.cycle_number AS paid_cycle_number,
+       p.status AS payout_status,
+       p.payout_date
      FROM group_members gm
      JOIN equb_groups eg ON eg.group_id = gm.group_id
+     LEFT JOIN payouts p ON p.group_id = gm.group_id AND p.member_id = gm.member_id AND p.status IN ('completed', 'pending')
      WHERE gm.user_id = $1 AND gm.status = 'active' AND eg.is_deleted = FALSE
      ORDER BY eg.created_at DESC`,
     [req.userId]
@@ -159,25 +165,29 @@ export const getPayoutSchedule = asyncWrapper(async (req, res) => {
     const activeCount = row.active_members_count || row.max_members;
     const estimatedPayoutAmount = Number(row.contribution_amount) * activeCount;
 
+    const effectiveCycle = row.paid_cycle_number || row.position_in_cycle;
+
     let projectedDate = null;
-    if (row.start_date) {
+    if (row.payout_date) {
+      projectedDate = new Date(row.payout_date).toISOString().split('T')[0];
+    } else if (row.start_date) {
       const start = new Date(row.start_date);
-      const daysToAdd = (row.position_in_cycle - 1) * row.cycle_duration;
+      const daysToAdd = (effectiveCycle - 1) * row.cycle_duration;
       start.setDate(start.getDate() + daysToAdd);
       projectedDate = start.toISOString().split('T')[0];
     }
 
     let payoutStatus = 'upcoming';
-    if (row.position_in_cycle < row.current_cycle) {
+    if (row.payout_status === 'completed' || effectiveCycle < row.current_cycle) {
       payoutStatus = 'completed';
-    } else if (row.position_in_cycle === row.current_cycle) {
-      payoutStatus = 'current';
+    } else if (effectiveCycle === row.current_cycle) {
+      payoutStatus = row.payout_status === 'pending' ? 'pending_approval' : 'current';
     }
 
     return {
       group_id: row.group_id,
       group_name: row.group_name,
-      position_in_cycle: row.position_in_cycle,
+      position_in_cycle: effectiveCycle,
       current_cycle: row.current_cycle,
       total_cycles: row.total_cycles || row.active_members_count,
       projected_date: projectedDate,
@@ -333,6 +343,7 @@ export const approvePayout = asyncWrapper(async (req, res) => {
       throw new AppError(`Cannot approve payout with status '${payout.status}'`, 400);
     }
 
+    // Block approval if any member hasn't paid yet — same rule as automatic flow
     const { rows: unpaidRows } = await client.query(
       `SELECT contribution_id FROM contributions
        WHERE group_id = $1 AND cycle_number = $2 AND status != 'paid'`,
@@ -370,32 +381,33 @@ export const approvePayout = asyncWrapper(async (req, res) => {
     const group = groupRows[0];
     const nextCycle = group.current_cycle + 1;
 
-    await client.query(
-      `UPDATE equb_groups SET current_cycle = $1 WHERE group_id = $2`,
-      [nextCycle, payout.group_id]
-    );
-
     if (nextCycle > group.max_members) {
+      // All cycles done — mark group completed
       await client.query(
-        `UPDATE equb_groups SET status = 'completed' WHERE group_id = $1`,
-        [payout.group_id]
+        `UPDATE equb_groups SET status = 'completed', current_cycle = $1 WHERE group_id = $2`,
+        [nextCycle, payout.group_id]
       );
     } else {
-      const { rows: dueDateRows } = await client.query(
-        `SELECT due_date FROM contributions
-         WHERE group_id = $1 AND cycle_number = $2
-         ORDER BY due_date DESC LIMIT 1`,
-        [payout.group_id, payout.cycle_number]
-      );
-      const lastDueDate = dueDateRows.length > 0 ? new Date(dueDateRows[0].due_date) : new Date();
-      const nextDueDate = new Date(lastDueDate);
+      // Next cycle due date is based on TODAY + cycle_duration.
+      // This prevents the next contribution from being immediately overdue
+      // when the current cycle ran late.
+      const today = new Date();
+      const nextDueDate = new Date(today);
       nextDueDate.setDate(nextDueDate.getDate() + group.cycle_duration);
+      const nextDueDateStr = nextDueDate.toISOString().split('T')[0];
+
+      await client.query(
+        `UPDATE equb_groups
+         SET current_cycle = $1, cycle_end_date = $2
+         WHERE group_id = $3`,
+        [nextCycle, nextDueDateStr, payout.group_id]
+      );
 
       await client.query(
         `INSERT INTO contributions (member_id, group_id, cycle_number, amount, due_date, status)
          SELECT member_id, $1, $2, $3, $4, 'pending'
          FROM group_members WHERE group_id = $1 AND status = 'active'`,
-        [payout.group_id, nextCycle, group.contribution_amount, nextDueDate.toISOString().split('T')[0]]
+        [payout.group_id, nextCycle, group.contribution_amount, nextDueDateStr]
       );
     }
 
@@ -584,8 +596,8 @@ export const getGroupPayoutSchedule = asyncWrapper(async (req, res) => {
 
   // Fetch all payouts for this group
   const { rows: payouts } = await pool.query(
-    `SELECT p.cycle_number, p.payout_amount, p.payout_date, p.status,
-            u.full_name AS recipient_name
+    `SELECT p.payout_id, p.cycle_number, p.payout_amount, p.payout_date, p.status,
+            p.member_id, u.full_name AS recipient_name, u.phone_number AS recipient_phone
      FROM payouts p
      JOIN group_members gm ON gm.member_id = p.member_id
      JOIN users u ON u.user_id = gm.user_id
@@ -594,56 +606,83 @@ export const getGroupPayoutSchedule = asyncWrapper(async (req, res) => {
     [groupId]
   );
 
-  // Index payouts by cycle number
-  const payoutByCycle = {};
+  // Index existing payouts by cycle number and track already-paid members
+  const payoutByCycle = new Map();
+  const paidMemberIds = new Set();
   for (const p of payouts) {
-    payoutByCycle[Number(p.cycle_number)] = p;
+    payoutByCycle.set(Number(p.cycle_number), p);
+    if (p.status === 'completed' || p.status === 'pending') {
+      paidMemberIds.add(p.member_id);
+    }
   }
 
-  // Index members by position_in_cycle
-  const memberByPosition = {};
-  for (const m of members) {
-    memberByPosition[Number(m.position_in_cycle)] = m;
-  }
+  // Active members who have not yet received any payout, ordered by position
+  const unpaidMembers = members.filter((m) => !paidMemberIds.has(m.member_id));
+  let unpaidIdx = 0;
 
   const estimatedPayout = contributionAmount * members.length;
   const startDate = group.start_date ? new Date(group.start_date) : null;
 
-  // Build one entry per cycle
+  // Build one entry per cycle without duplicate recipients
   const schedule = [];
   const effectiveTotal = Math.max(totalCycles, members.length);
 
   for (let cycle = 1; cycle <= effectiveTotal; cycle++) {
-    const payout = payoutByCycle[cycle];
-    const member = memberByPosition[cycle];
+    const existingPayout = payoutByCycle.get(cycle);
+
+    let recipientName = null;
+    let recipientPhone = null;
+    let payoutAmount = estimatedPayout;
+    let payoutDate = null;
+    let status = 'upcoming';
+    let payoutId = null;
+
+    if (existingPayout) {
+      recipientName = existingPayout.recipient_name;
+      recipientPhone = existingPayout.recipient_phone;
+      payoutAmount = Number(existingPayout.payout_amount) || estimatedPayout;
+      payoutDate = existingPayout.payout_date
+        ? new Date(existingPayout.payout_date).toISOString().split('T')[0]
+        : null;
+      status = existingPayout.status === 'completed' ? 'completed' : 'current';
+      payoutId = existingPayout.payout_id;
+    } else {
+      // Assign the next member who hasn't received a payout yet
+      const nextMember = unpaidMembers[unpaidIdx++];
+      if (nextMember) {
+        recipientName = nextMember.full_name;
+        recipientPhone = nextMember.phone_number;
+      } else {
+        recipientName = `Member #${cycle}`;
+      }
+
+      if (cycle < currentCycle) {
+        status = 'completed';
+      } else if (cycle === currentCycle) {
+        status = 'current';
+      } else {
+        status = 'upcoming';
+      }
+    }
 
     // Projected date: start_date + (cycle-1) * cycle_duration days
-    let projectedDate = null;
-    if (startDate) {
+    let projectedDate = payoutDate;
+    if (!projectedDate && startDate) {
       const d = new Date(startDate);
       d.setDate(d.getDate() + (cycle - 1) * cycleDuration);
       projectedDate = d.toISOString().split('T')[0];
-    }
-
-    let status = 'upcoming';
-    if (payout?.status === 'completed' || cycle < currentCycle) {
-      status = 'completed';
-    } else if (cycle === currentCycle) {
-      status = 'current';
     }
 
     schedule.push({
       cycle_number: cycle,
       total_cycles: effectiveTotal,
       current_cycle: currentCycle,
-      recipient_name: payout?.recipient_name ?? member?.full_name ?? `Member #${cycle}`,
-      recipient_phone: member?.phone_number ?? null,
-      projected_date: payout?.payout_date
-        ? new Date(payout.payout_date).toISOString().split('T')[0]
-        : (projectedDate ?? 'Pending Start'),
-      payout_amount: payout?.payout_amount ?? estimatedPayout,
+      recipient_name: recipientName,
+      recipient_phone: recipientPhone,
+      projected_date: projectedDate ?? 'Pending Start',
+      payout_amount: payoutAmount,
       status,
-      payout_id: payout?.payout_id ?? null,
+      payout_id: payoutId,
     });
   }
 
