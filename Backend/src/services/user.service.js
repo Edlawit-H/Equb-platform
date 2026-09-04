@@ -252,7 +252,7 @@ export async function changePassword(userId, data) {
 
     // If OTP code is provided, verify it
     if (otp_code) {
-        const otpRecord = await findValidVerificationOTP(user.phone_number, otp_code.trim(), 'verification');
+        const otpRecord = await findValidVerificationOTP(user.phone_number, otp_code.trim(), 'password_change');
         if (!otpRecord) {
             throw new Error("Invalid or expired verification code");
         }

@@ -97,16 +97,17 @@ export const loginUser = async (data) => {
 };
 
 export const resendRegistrationOTP = async (data) => {
-  const existing = await findUserByPhone(data.phone_number);
+  const phoneNumber = normalizePhone(data.phone_number);
+  const existing = await findUserByPhone(phoneNumber);
   if (existing) throw new AppError("User already exists", 409);
 
   const otp = generateOTP();
   await pool.query(
     `UPDATE otp_codes SET verified=true WHERE phone_number=$1 AND purpose='registration' AND verified=false`,
-    [data.phone_number]
+    [phoneNumber]
   );
   await createOTP({
-    phone_number: data.phone_number,
+    phone_number: phoneNumber,
     otp_code: otp,
     purpose: "registration",
     expires_at: new Date(Date.now() + 5 * 60 * 1000),
@@ -124,6 +125,11 @@ export const requestPasswordReset = async (phone_number) => {
   if (!user) throw new AppError("User not found", 404);
 
   const otp = generateOTP();
+  await pool.query(
+    `UPDATE otp_codes SET verified=true
+     WHERE phone_number=$1 AND purpose='forgot_password' AND verified=false`,
+    [phone_number]
+  );
   await createOTP({
     phone_number,
     otp_code: otp,

@@ -28,7 +28,10 @@ class AboutEqubPage extends StatelessWidget {
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [AppTheme.primary, AppTheme.primary.withValues(alpha: 0.75)],
+                  colors: [
+                    AppTheme.primary,
+                    AppTheme.primary.withValues(alpha: 0.75)
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -43,7 +46,8 @@ class AboutEqubPage extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(Icons.savings_rounded, color: Colors.white, size: 32),
+                    child: const Icon(Icons.savings_rounded,
+                        color: Colors.white, size: 32),
                   ),
                   const SizedBox(height: 16),
                   const Text(
@@ -104,9 +108,9 @@ class AboutEqubPage extends StatelessWidget {
               title: 'Why Digital?',
               body:
                   'Bringing Equb online means transparent contribution tracking, '
-                  'automatic payout processing, real-time notifications, and a '
+                  'automatic payout processing, and a '
                   'reliable record of every transaction removing the manual '
-                  'coordination and trust risks of paper-based systems.',
+                  'coordination of paper-based systems.',
             ),
 
             const SizedBox(height: 12),
@@ -153,7 +157,8 @@ class _InfoCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String body;
-  const _InfoCard({required this.icon, required this.title, required this.body});
+  const _InfoCard(
+      {required this.icon, required this.title, required this.body});
 
   @override
   Widget build(BuildContext context) {
