@@ -143,7 +143,8 @@ export const getPayoutSchedule = asyncWrapper(async (req, res) => {
        eg.contribution_amount,
        eg.cycle_duration,
        eg.max_members,
-       eg.start_date,
+      eg.start_date,
+      eg.cycle_end_date,
        eg.status AS group_status,
        (
          SELECT COUNT(*)::int FROM group_members
@@ -374,20 +375,23 @@ export const approvePayout = asyncWrapper(async (req, res) => {
     );
 
     const { rows: groupRows } = await client.query(
-      `SELECT contribution_amount, max_members, current_cycle, cycle_duration
+      `SELECT contribution_amount, max_members, total_cycles, current_cycle, cycle_duration, cycle_end_date
        FROM equb_groups WHERE group_id = $1`,
       [payout.group_id]
     );
     const group = groupRows[0];
-    const nextCycle = group.current_cycle + 1;
+    const currentCycle = Number(group.current_cycle);
+    const totalCycles = Number(group.total_cycles ?? group.max_members);
+    const nextCycle = currentCycle + 1;
+    const cycleWasDue = group.cycle_end_date && new Date(group.cycle_end_date) <= new Date();
 
-    if (nextCycle > group.max_members) {
+    if (nextCycle > totalCycles) {
       // All cycles done — mark group completed
       await client.query(
         `UPDATE equb_groups SET status = 'completed', current_cycle = $1 WHERE group_id = $2`,
         [nextCycle, payout.group_id]
       );
-    } else {
+    } else if (cycleWasDue) {
       // Next cycle due date is based on TODAY + cycle_duration.
       // This prevents the next contribution from being immediately overdue
       // when the current cycle ran late.
@@ -416,7 +420,7 @@ export const approvePayout = asyncWrapper(async (req, res) => {
     await client.query('COMMIT');
 
     notifyPayoutReceived(payout.user_id, payoutAmount, payout.group_id).catch(() => {});
-    if (nextCycle > group.max_members) {
+    if (nextCycle > totalCycles) {
       notifyGroupCompleted(payout.group_id).catch(() => {});
     }
 
@@ -568,8 +572,8 @@ export const getGroupPayoutSchedule = asyncWrapper(async (req, res) => {
 
   // Fetch group info
   const { rows: groupRows } = await pool.query(
-    `SELECT group_id, group_name, contribution_amount, cycle_duration,
-            current_cycle, total_cycles, max_members, start_date, status
+        `SELECT group_id, group_name, contribution_amount, cycle_duration,
+          current_cycle, total_cycles, max_members, start_date, cycle_end_date, status
      FROM equb_groups WHERE group_id = $1 AND is_deleted = FALSE`,
     [groupId]
   );
@@ -626,6 +630,17 @@ export const getGroupPayoutSchedule = asyncWrapper(async (req, res) => {
   // Build one entry per cycle without duplicate recipients
   const schedule = [];
   const effectiveTotal = Math.max(totalCycles, members.length);
+
+  const { rows: cycleStartRows } = await pool.query(
+    `SELECT cycle_number, MIN(created_at) AS cycle_started_at
+     FROM contributions
+     WHERE group_id = $1
+     GROUP BY cycle_number`,
+    [groupId]
+  );
+  const cycleStartByNumber = new Map(
+    cycleStartRows.map((row) => [Number(row.cycle_number), row.cycle_started_at])
+  );
 
   for (let cycle = 1; cycle <= effectiveTotal; cycle++) {
     const existingPayout = payoutByCycle.get(cycle);
@@ -685,6 +700,9 @@ export const getGroupPayoutSchedule = asyncWrapper(async (req, res) => {
 
     schedule.push({
       cycle_number: cycle,
+      cycle_started_at: cycleStartByNumber.get(cycle)
+        ? new Date(cycleStartByNumber.get(cycle)).toISOString()
+        : null,
       total_cycles: effectiveTotal,
       current_cycle: currentCycle,
       recipient_name: recipientName,

@@ -1,6 +1,6 @@
 import pool from "../config/db.js";
 import bcrypt from "bcrypt";
-import { findUserByPhone, findUserByPhoneForLogin, updatePassword } from "../models/users.model.js";
+import { findUserByPhone, findUserByPhoneForLogin } from "../models/users.model.js";
 import { createOTP, findValidOTP, findValidResetOTP } from "../models/otp.model.js";
 import { generateOTP } from "../utils/otp.js";
 import { sanitizeUser } from "../utils/sanitizeUser.js";
@@ -119,6 +119,7 @@ export const resendRegistrationOTP = async (data) => {
 };
 
 export const requestPasswordReset = async (phone_number) => {
+  phone_number = normalizePhone(phone_number);
   const user = await findUserByPhone(phone_number);
   if (!user) throw new AppError("User not found", 404);
 
@@ -141,11 +142,19 @@ export const resetPassword = async (data) => {
   try {
     await client.query("BEGIN");
 
-    const otpRecord = await findValidResetOTP(data.phone_number, data.otp_code);
+    const phoneNumber = normalizePhone(data.phone_number);
+    const otpRecord = await findValidResetOTP(phoneNumber, data.otp_code);
     if (!otpRecord) throw new AppError("Invalid or expired OTP", 400);
 
     const hashedPassword = await bcrypt.hash(data.new_password, 10);
-    await updatePassword(data.phone_number, hashedPassword);
+    const { rows: updatedUsers } = await client.query(
+      `UPDATE users SET password_hash = $1 WHERE phone_number = $2 RETURNING user_id`,
+      [hashedPassword, phoneNumber]
+    );
+    if (updatedUsers.length === 0) {
+      throw new AppError("User not found", 404);
+    }
+
     await client.query(`UPDATE otp_codes SET verified=true WHERE otp_id=$1`, [otpRecord.otp_id]);
 
     await client.query("COMMIT");

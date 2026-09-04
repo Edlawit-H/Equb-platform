@@ -7,6 +7,7 @@ import '../../../reports/presentation/pages/export_report_page.dart';
 import '../../../wallet/data/wallet_service.dart';
 import '../../../payouts/presentation/pages/payout_history_page.dart';
 import '../../../payouts/presentation/pages/payout_schedule_page.dart';
+import '../../../payouts/data/payouts_service.dart';
 
 class GroupDetailsPage extends StatefulWidget {
   final Map<String, dynamic>? group;
@@ -27,11 +28,13 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
   final _reportsService = ReportsService();
   final _contributionsService = ContributionsService();
   final _walletService = WalletService();
+  final _payoutsService = PayoutsService();
 
   Map<String, dynamic> _groupData = {};
   List<Map<String, dynamic>> _members = [];
   Map<String, dynamic> _groupSummary = {};
   List<Map<String, dynamic>> _transactions = [];
+  List<Map<String, dynamic>> _cycleSchedule = [];
   bool _isLoading = true;
 
   static const Color headerColor = Color(0xFFEA580C);
@@ -119,12 +122,16 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
         _walletService
             .getGroupTransactions(_groupId)
             .catchError((_) => <String, dynamic>{}),
+        _payoutsService
+            .getGroupSchedule(_groupId)
+            .catchError((_) => <String, dynamic>{}),
       ]);
 
       final groupRes = futures[0];
       final membersRes = futures[1];
       final summaryRes = futures[2];
       final transactionsRes = futures[3];
+      final scheduleRes = futures[4];
 
       if (mounted) {
         setState(() {
@@ -143,6 +150,10 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
           final transactions = transactionsRes['transactions'];
           _transactions = transactions is List
               ? List<Map<String, dynamic>>.from(transactions)
+              : <Map<String, dynamic>>[];
+          final schedule = scheduleRes['schedule'];
+          _cycleSchedule = schedule is List
+              ? List<Map<String, dynamic>>.from(schedule)
               : <Map<String, dynamic>>[];
           _isLoading = false;
         });
@@ -766,7 +777,6 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
         final m = _members[i];
         final name = m["full_name"] ?? m["name"] ?? "Member ${i + 1}";
         final role = (m["role"] ?? "member").toString().toUpperCase();
-        final payoutPosition = m["payout_position"] ?? (i + 1);
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -802,7 +812,7 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
                       ),
                     ),
                     Text(
-                      "Role: $role • Payout Round: #$payoutPosition",
+                      "Role: $role",
                       style: const TextStyle(
                         fontSize: 11.5,
                         color: textMuted,
@@ -835,13 +845,22 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
     final pendingCount = financials["pending_contributions_count"] ?? 0;
     final overdueCount = financials["overdue_contributions_count"] ?? 0;
 
-    final currentCycle = groupSummary["current_cycle"] ?? _groupData["current_cycle"] ?? 1;
-    final totalCycles = groupSummary["total_cycles"] ?? _groupData["total_cycles"] ?? (_maxMembers > 0 ? _maxMembers : _members.length);
-    final remainingCycles = groupSummary["remaining_cycles"] ?? (totalCycles > currentCycle ? totalCycles - currentCycle + 1 : 0);
-    final completionPct = (groupSummary["completion_percentage"] ?? ((currentCycle - 1) / (totalCycles > 0 ? totalCycles : 1) * 100)).toDouble();
+    final currentCycle =
+        groupSummary["current_cycle"] ?? _groupData["current_cycle"] ?? 1;
+    final totalCycles = groupSummary["total_cycles"] ??
+        _groupData["total_cycles"] ??
+        (_maxMembers > 0 ? _maxMembers : _members.length);
+    final remainingCycles = groupSummary["remaining_cycles"] ??
+        (totalCycles > currentCycle ? totalCycles - currentCycle + 1 : 0);
+    final completionPct = (groupSummary["completion_percentage"] ??
+            ((currentCycle - 1) / (totalCycles > 0 ? totalCycles : 1) * 100))
+        .toDouble();
 
-    final cycleDuration = _groupData["cycle_duration"] ?? groupSummary["cycle_duration"] ?? 7;
-    final contribAmount = _amountVal is num ? (_amountVal as num).toDouble() : double.tryParse('$_amountVal') ?? 0.0;
+    final cycleDuration =
+        _groupData["cycle_duration"] ?? groupSummary["cycle_duration"] ?? 7;
+    final contribAmount = _amountVal is num
+        ? (_amountVal as num).toDouble()
+        : double.tryParse('$_amountVal') ?? 0.0;
 
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -893,7 +912,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
                     ],
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: primaryOrange.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
@@ -916,7 +936,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
                 child: LinearProgressIndicator(
                   value: (completionPct / 100).clamp(0.0, 1.0),
                   backgroundColor: const Color(0xFFF1F5F9),
-                  valueColor: const AlwaysStoppedAnimation<Color>(primaryOrange),
+                  valueColor:
+                      const AlwaysStoppedAnimation<Color>(primaryOrange),
                   minHeight: 10,
                 ),
               ),
@@ -1022,9 +1043,12 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _statusCountItem("Paid", "$paidCount", activeGreen, Icons.check_circle_rounded),
-                  _statusCountItem("Pending", "$pendingCount", primaryOrange, Icons.schedule_rounded),
-                  _statusCountItem("Overdue", "$overdueCount", const Color(0xFFDC2626), Icons.warning_rounded),
+                  _statusCountItem("Paid", "$paidCount", activeGreen,
+                      Icons.check_circle_rounded),
+                  _statusCountItem("Pending", "$pendingCount", primaryOrange,
+                      Icons.schedule_rounded),
+                  _statusCountItem("Overdue", "$overdueCount",
+                      const Color(0xFFDC2626), Icons.warning_rounded),
                 ],
               ),
             ],
@@ -1049,7 +1073,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
           icon: Icons.timeline_rounded,
           iconColor: primaryOrange,
           title: "Payout Schedule",
-          subtitle: "View rotation timeline, member turn order & projected dates",
+          subtitle:
+              "View rotation timeline, member turn order & projected dates",
           badgeText: "Timeline",
           onTap: () => Navigator.push(
             context,
@@ -1084,7 +1109,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
           icon: Icons.download_rounded,
           iconColor: const Color(0xFF2563EB),
           title: "Download Group Report",
-          subtitle: "Export full transaction report in PDF/TXT or Excel/CSV format",
+          subtitle:
+              "Export full transaction report in PDF/TXT or Excel/CSV format",
           badgeText: "Export",
           onTap: () => Navigator.push(
             context,
@@ -1099,7 +1125,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
     );
   }
 
-  Widget _statusCountItem(String label, String count, Color color, IconData icon) {
+  Widget _statusCountItem(
+      String label, String count, Color color, IconData icon) {
     return Column(
       children: [
         Row(
@@ -1184,7 +1211,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: iconColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
@@ -1260,21 +1288,48 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
     // Build a unified event list from group data + members + transactions
     final events = <Map<String, dynamic>>[];
 
-    // Group started event
     final startDate = _groupData['start_date']?.toString();
-    if (startDate != null && startDate.isNotEmpty) {
+
+    // Compare each actual cycle start with its best-case planned start.
+    final firstStart = startDate == null ? null : DateTime.tryParse(startDate);
+    final cycleDuration = int.tryParse(
+          (_groupData['cycle_duration'] ?? '7').toString(),
+        ) ??
+        7;
+    for (final cycleData in _cycleSchedule) {
+      final cycle = int.tryParse('${cycleData['cycle_number']}');
+      final actualStart = DateTime.tryParse(
+        cycleData['cycle_started_at']?.toString() ?? '',
+      );
+      if (cycle == null || actualStart == null) continue;
+
+      final plannedStart = firstStart?.add(
+        Duration(days: (cycle - 1) * cycleDuration),
+      );
+      final actualDay =
+          DateTime(actualStart.year, actualStart.month, actualStart.day);
+      final plannedDay = plannedStart == null
+          ? null
+          : DateTime(plannedStart.year, plannedStart.month, plannedStart.day);
+      final isLate = plannedDay != null && actualDay.isAfter(plannedDay);
+      final actualStartIso = actualStart.toIso8601String();
       events.add({
-        'type': 'group_started',
-        'label': 'Group Started',
-        'sub': 'Cycle 1 began — contributions are now active',
-        'date': startDate.split('T').first,
-        'sort': startDate,
+        'type': cycle == 1 ? 'group_started' : 'cycle_started',
+        'label': cycle == 1 ? 'Group Started' : 'Cycle $cycle Started',
+        'sub': isLate
+            ? 'Late cycle — contributions are now active'
+            : 'On-time cycle — contributions are now active',
+        'date': actualStartIso.split('T').first,
+        'sort': actualStartIso,
       });
     }
 
     // Member join events — use joined_at if present, else fall back to start_date
     for (final m in _members) {
-      final joinedAt = m['joined_at']?.toString() ?? m['created_at']?.toString() ?? startDate ?? '';
+      final joinedAt = m['joined_at']?.toString() ??
+          m['created_at']?.toString() ??
+          startDate ??
+          '';
       final name = m['full_name']?.toString() ?? 'Member';
       final role = m['role']?.toString() ?? 'member';
       events.add({
@@ -1304,8 +1359,8 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
       });
     }
 
-    // Sort chronologically (oldest first)
-    events.sort((a, b) => (a['sort'] ?? '').compareTo(b['sort'] ?? ''));
+    // Show the newest activity first.
+    events.sort((a, b) => (b['sort'] ?? '').compareTo(a['sort'] ?? ''));
 
     if (events.isEmpty) {
       return Center(
@@ -1314,17 +1369,23 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.history_rounded, size: 52, color: textMuted.withValues(alpha: 0.4)),
+              Icon(Icons.history_rounded,
+                  size: 52, color: textMuted.withValues(alpha: 0.4)),
               const SizedBox(height: 14),
               const Text(
                 'No activity recorded yet',
-                style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16, color: textDark),
+                style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: textDark),
               ),
               const SizedBox(height: 6),
               const Text(
                 'Member joins, group start, contributions and payouts will appear here.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontFamily: 'Poppins', color: textMuted, fontSize: 12.5),
+                style: TextStyle(
+                    fontFamily: 'Poppins', color: textMuted, fontSize: 12.5),
               ),
             ],
           ),
@@ -1355,6 +1416,11 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
             iconBg = const Color(0xFFE0F2FE);
             iconData = Icons.person_add_rounded;
             break;
+          case 'cycle_started':
+            iconColor = const Color(0xFF7C3AED);
+            iconBg = const Color(0xFFF3E8FF);
+            iconData = Icons.flag_circle_rounded;
+            break;
           case 'payout':
             iconColor = activeGreen;
             iconBg = activeGreenBg;
@@ -1376,8 +1442,10 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
           child: Row(
             children: [
               Container(
-                width: 42, height: 42,
-                decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(12)),
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                    color: iconBg, borderRadius: BorderRadius.circular(12)),
                 child: Icon(iconData, color: iconColor, size: 22),
               ),
               const SizedBox(width: 14),
@@ -1386,9 +1454,17 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(e['label'] as String,
-                      style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w700, fontSize: 14, color: textDark)),
-                    Text('${e['sub']}${e['date'] != null && (e['date'] as String).isNotEmpty ? " • ${e['date']}" : ""}',
-                      style: const TextStyle(fontFamily: 'Poppins', color: textMuted, fontSize: 12)),
+                        style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            color: textDark)),
+                    Text(
+                        '${e['sub']}${e['date'] != null && (e['date'] as String).isNotEmpty ? " • ${e['date']}" : ""}',
+                        style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            color: textMuted,
+                            fontSize: 12)),
                   ],
                 ),
               ),
@@ -1398,6 +1474,7 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
       },
     );
   }
+
   bool _isStarting = false;
 
   Future<void> _handleStartGroup() async {

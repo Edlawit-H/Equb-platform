@@ -163,13 +163,13 @@ export async function requestPasswordChangeOTP(userId, data) {
         throw new Error("New password must be at least 6 characters");
     }
 
-    // Invalidate previous verification OTPs for this phone number
+        // Invalidate previous password-change OTPs for this phone number
     await pool.query(
         `
         UPDATE otp_codes
         SET verified = true
         WHERE phone_number = $1
-          AND purpose = 'verification'
+                    AND purpose = 'password_change'
           AND verified = false;
         `,
         [user.phone_number]
@@ -181,12 +181,11 @@ export async function requestPasswordChangeOTP(userId, data) {
     await createOTP({
         phone_number: user.phone_number,
         otp_code: otp,
-        purpose: "verification",
+        purpose: "password_change",
         expires_at: expiresAt,
     });
 
-    //if (process.env.NODE_ENV !== 'production')
-    console.log('Password Change OTP:', otp);
+    console.log("Password Change Verification OTP:", otp);
 
     const phoneStr = user.phone_number || '';
     const maskedPhone = phoneStr.length > 4
@@ -197,7 +196,6 @@ export async function requestPasswordChangeOTP(userId, data) {
         message: "Verification code sent successfully",
         phone: user.phone_number,
         masked_phone: maskedPhone,
-        otp,
     };
 }
 

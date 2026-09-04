@@ -143,18 +143,41 @@ export const getGroupSummary = asyncWrapper(async (req, res) => {
     }
   }
 
-  const [groupRes, contribRes, payoutRes, memberRes] = await Promise.all([
-    pool.query(
-      `SELECT group_id, group_name, contribution_amount, cycle_duration, max_members, total_cycles, current_cycle, status
-       FROM equb_groups WHERE group_id = $1 AND is_deleted = FALSE`,
-      [groupId]
-    ),
+  // 1. Fetch group info first to determine current_cycle
+  const { rows: groupRows } = await pool.query(
+    `SELECT group_id, group_name, contribution_amount, cycle_duration, max_members, total_cycles, current_cycle, status
+     FROM equb_groups WHERE group_id = $1 AND is_deleted = FALSE`,
+    [groupId]
+  );
+
+  if (groupRows.length === 0) {
+    throw new AppError('Group not found', 404);
+  }
+
+  const group = groupRows[0];
+  const totalCycles = group.total_cycles || group.max_members || 1;
+  const currentCycle = Number(group.current_cycle || 1);
+  const remainingCycles = Math.max(0, totalCycles - currentCycle + 1);
+  const completionPercentage = group.status === 'completed'
+    ? 100
+    : Math.min(100, Math.round(((currentCycle - 1) / totalCycles) * 100));
+
+  // 2. Fetch current cycle metrics, all-time totals, payouts, and members in parallel
+  const [currentCycleContribRes, allTimeContribRes, payoutRes, memberRes] = await Promise.all([
+    // Current cycle breakdown strictly for "Current Cycle Payment Status"
     pool.query(
       `SELECT
-         COALESCE(SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END), 0) AS total_collected,
          COUNT(CASE WHEN status = 'paid' THEN 1 END)::int AS paid_count,
          COUNT(CASE WHEN status = 'pending' THEN 1 END)::int AS pending_count,
          COUNT(CASE WHEN status = 'overdue' THEN 1 END)::int AS overdue_count
+       FROM contributions
+       WHERE group_id = $1 AND cycle_number = $2`,
+      [groupId, currentCycle]
+    ),
+    // All-time group financial totals
+    pool.query(
+      `SELECT
+         COALESCE(SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END), 0) AS total_collected
        FROM contributions WHERE group_id = $1`,
       [groupId]
     ),
@@ -180,17 +203,11 @@ export const getGroupSummary = asyncWrapper(async (req, res) => {
     ),
   ]);
 
-  if (groupRes.rows.length === 0) {
-    throw new AppError('Group not found', 404);
-  }
-
-  const group = groupRes.rows[0];
-  const totalCycles = group.total_cycles || group.max_members || 1;
-  const currentCycle = group.current_cycle || 1;
-  const remainingCycles = Math.max(0, totalCycles - currentCycle + 1);
-  const completionPercentage = group.status === 'completed'
-    ? 100
-    : Math.min(100, Math.round(((currentCycle - 1) / totalCycles) * 100));
+  const currentCycleContrib = currentCycleContribRes.rows[0] || {
+    paid_count: 0,
+    pending_count: 0,
+    overdue_count: 0,
+  };
 
   res.status(200).json({
     status: 'success',
@@ -208,11 +225,11 @@ export const getGroupSummary = asyncWrapper(async (req, res) => {
         completion_percentage: completionPercentage,
       },
       financials: {
-        total_collected: Number(contribRes.rows[0].total_collected),
-        total_paid_out: Number(payoutRes.rows[0].total_paid_out),
-        paid_contributions_count: contribRes.rows[0].paid_count,
-        pending_contributions_count: contribRes.rows[0].pending_count,
-        overdue_contributions_count: contribRes.rows[0].overdue_count,
+        total_collected: Number(allTimeContribRes.rows[0]?.total_collected || 0),
+        total_paid_out: Number(payoutRes.rows[0]?.total_paid_out || 0),
+        paid_contributions_count: currentCycleContrib.paid_count,
+        pending_contributions_count: currentCycleContrib.pending_count,
+        overdue_contributions_count: currentCycleContrib.overdue_count,
       },
       members: memberRes.rows,
     },
