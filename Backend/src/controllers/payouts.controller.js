@@ -1,4 +1,4 @@
-import { pool } from '../db/pool.js';
+﻿import { pool } from '../db/pool.js';
 import { AppError } from '../utils/AppError.js';
 import { asyncWrapper } from '../utils/asyncWrapper.js';
 import { notifyPayoutReceived, notifyGroupCompleted } from '../services/notification.service.js';
@@ -374,44 +374,28 @@ export const approvePayout = asyncWrapper(async (req, res) => {
       [payout.user_id, payout.group_id, payoutAmount]
     );
 
-    const { rows: groupRows } = await client.query(
-      `SELECT contribution_amount, max_members, total_cycles, current_cycle, cycle_duration, cycle_end_date
-       FROM equb_groups WHERE group_id = $1`,
+    // Check if every active member has now received a payout.
+    // Completion is tied ONLY to all members having been paid — no date or cycle guards.
+    const { rows: unpaidMembers } = await client.query(
+      `SELECT gm.member_id
+       FROM group_members gm
+       WHERE gm.group_id = $1
+         AND gm.status = 'active'
+         AND NOT EXISTS (
+           SELECT 1 FROM payouts p
+           WHERE p.group_id = gm.group_id
+             AND p.member_id = gm.member_id
+             AND p.status = 'completed'
+         )`,
       [payout.group_id]
     );
-    const group = groupRows[0];
-    const currentCycle = Number(group.current_cycle);
-    const totalCycles = Number(group.total_cycles ?? group.max_members);
-    const nextCycle = currentCycle + 1;
-    const cycleWasDue = group.cycle_end_date && new Date(group.cycle_end_date) <= new Date();
 
-    if (nextCycle > totalCycles) {
-      // All cycles done — mark group completed
-      await client.query(
-        `UPDATE equb_groups SET status = 'completed', current_cycle = $1 WHERE group_id = $2`,
-        [nextCycle, payout.group_id]
-      );
-    } else if (cycleWasDue) {
-      // Next cycle due date is based on TODAY + cycle_duration.
-      // This prevents the next contribution from being immediately overdue
-      // when the current cycle ran late.
-      const today = new Date();
-      const nextDueDate = new Date(today);
-      nextDueDate.setDate(nextDueDate.getDate() + group.cycle_duration);
-      const nextDueDateStr = nextDueDate.toISOString().split('T')[0];
+    const allPaid = unpaidMembers.length === 0;
 
+    if (allPaid) {
       await client.query(
-        `UPDATE equb_groups
-         SET current_cycle = $1, cycle_end_date = $2
-         WHERE group_id = $3`,
-        [nextCycle, nextDueDateStr, payout.group_id]
-      );
-
-      await client.query(
-        `INSERT INTO contributions (member_id, group_id, cycle_number, amount, due_date, status)
-         SELECT member_id, $1, $2, $3, $4, 'pending'
-         FROM group_members WHERE group_id = $1 AND status = 'active'`,
-        [payout.group_id, nextCycle, group.contribution_amount, nextDueDateStr]
+        `UPDATE equb_groups SET status = 'completed' WHERE group_id = $1`,
+        [payout.group_id]
       );
     }
 
@@ -420,7 +404,7 @@ export const approvePayout = asyncWrapper(async (req, res) => {
     await client.query('COMMIT');
 
     notifyPayoutReceived(payout.user_id, payoutAmount, payout.group_id).catch(() => {});
-    if (nextCycle > totalCycles) {
+    if (allPaid) {
       notifyGroupCompleted(payout.group_id).catch(() => {});
     }
 

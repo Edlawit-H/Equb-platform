@@ -1,4 +1,4 @@
-import { pool } from '../db/pool.js';
+﻿import { pool } from '../db/pool.js';
 import { notifyPayoutReceived, notifyGroupCompleted } from './notification.service.js';
 
 export const checkCycleComplete = async (groupId, cycleNumber) => {
@@ -118,10 +118,35 @@ export const checkCycleComplete = async (groupId, cycleNumber) => {
 
     await notifyPayoutReceived(winner.user_id, payoutAmount, groupId).catch(() => {});
 
-    // If this cycle was already due or overdue, immediately advance to next cycle
-    // without waiting for the hourly cron job.
-    if (group.cycle_end_date && new Date(group.cycle_end_date) <= new Date()) {
-      await advanceCycle(groupId).catch(() => {});
+    // Completion is tied ONLY to payouts — the group is done when every active
+    // member has received a completed payout. No date checks, no cycle counters.
+    const { rows: unpaidMembers } = await pool.query(
+      `SELECT gm.member_id
+       FROM group_members gm
+       WHERE gm.group_id = $1
+         AND gm.status = 'active'
+         AND NOT EXISTS (
+           SELECT 1 FROM payouts p
+           WHERE p.group_id = gm.group_id
+             AND p.member_id = gm.member_id
+             AND p.status = 'completed'
+         )`,
+      [groupId]
+    );
+
+    if (unpaidMembers.length === 0) {
+      // Every member has received their payout — the Equb is complete.
+      await pool.query(
+        `UPDATE equb_groups SET status = 'completed' WHERE group_id = $1 AND status = 'active'`,
+        [groupId]
+      );
+      await notifyGroupCompleted(groupId).catch(() => {});
+    } else {
+      // More members still need their payout — advance to next cycle if the
+      // current cycle period has elapsed, otherwise the cron will pick it up.
+      if (group.cycle_end_date && new Date(group.cycle_end_date) <= new Date()) {
+        await advanceCycle(groupId).catch(() => {});
+      }
     }
 
   } catch (err) {
@@ -171,9 +196,24 @@ export const advanceCycle = async (groupId) => {
     }
 
     const nextCycle = Number(group.current_cycle) + 1;
-    const totalCycles = Number(group.total_cycles ?? group.max_members);
 
-    if (nextCycle > totalCycles) {
+    // Check if every active member has now received a payout.
+    // This is the single source of truth for group completion — not cycle counts, not dates.
+    const { rows: unpaidMembers } = await client.query(
+      `SELECT gm.member_id
+       FROM group_members gm
+       WHERE gm.group_id = $1
+         AND gm.status = 'active'
+         AND NOT EXISTS (
+           SELECT 1 FROM payouts p
+           WHERE p.group_id = gm.group_id
+             AND p.member_id = gm.member_id
+             AND p.status = 'completed'
+         )`,
+      [groupId]
+    );
+
+    if (unpaidMembers.length === 0) {
       await client.query(
         `UPDATE equb_groups SET status = 'completed' WHERE group_id = $1`,
         [groupId]
