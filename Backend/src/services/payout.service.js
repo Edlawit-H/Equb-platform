@@ -7,7 +7,7 @@ export const checkCycleComplete = async (groupId, cycleNumber) => {
     await client.query('BEGIN');
 
     const { rows: groupRows } = await client.query(
-      `SELECT contribution_amount, max_members, total_cycles, current_cycle, cycle_duration
+      `SELECT contribution_amount, max_members, total_cycles, current_cycle, cycle_duration, cycle_end_date
        FROM equb_groups WHERE group_id = $1 AND status = 'active'`,
       [groupId]
     );
@@ -130,6 +130,9 @@ export const checkCycleComplete = async (groupId, cycleNumber) => {
       [groupId]
     );
     const allMembersPaid = unpaidMembers.length === 0;
+    const today = new Date().toISOString().slice(0, 10);
+    const cycleWasLate = group.cycle_end_date &&
+      String(group.cycle_end_date).slice(0, 10) < today;
     if (allMembersPaid) {
       await client.query(
         `UPDATE equb_groups SET status = 'completed'
@@ -147,7 +150,7 @@ export const checkCycleComplete = async (groupId, cycleNumber) => {
     } else {
       // More members still need their payout — advance to next cycle if the
       // current cycle period has elapsed, otherwise the cron will pick it up.
-      if (group.cycle_end_date && new Date(group.cycle_end_date) <= new Date()) {
+      if (cycleWasLate) {
         await advanceCycle(groupId).catch(() => {});
       }
     }

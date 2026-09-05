@@ -2,6 +2,7 @@
 import { AppError } from '../utils/AppError.js';
 import { asyncWrapper } from '../utils/asyncWrapper.js';
 import { notifyPayoutReceived, notifyGroupCompleted } from '../services/notification.service.js';
+import { advanceCycle } from '../services/payout.service.js';
 
 async function writeAuditLog(client, userId, action, entityName, entityId) {
   await client.query(
@@ -322,7 +323,7 @@ export const approvePayout = asyncWrapper(async (req, res) => {
 
     const { rows: payoutRows } = await client.query(
             `SELECT p.payout_id, p.group_id, p.member_id, p.payout_amount, p.cycle_number, p.status,
-              gm.user_id, eg.admin_id, eg.status AS group_status
+              gm.user_id, eg.admin_id, eg.status AS group_status, eg.cycle_end_date
        FROM payouts p
        JOIN group_members gm ON gm.member_id = p.member_id
        JOIN equb_groups eg ON eg.group_id = p.group_id
@@ -395,6 +396,9 @@ export const approvePayout = asyncWrapper(async (req, res) => {
     );
 
     const allPaid = unpaidMembers.length === 0;
+    const today = new Date().toISOString().slice(0, 10);
+    const cycleWasLate = payout.cycle_end_date &&
+      String(payout.cycle_end_date).slice(0, 10) < today;
 
     if (allPaid) {
       await client.query(
@@ -410,6 +414,8 @@ export const approvePayout = asyncWrapper(async (req, res) => {
     notifyPayoutReceived(payout.user_id, payoutAmount, payout.group_id).catch(() => {});
     if (allPaid) {
       notifyGroupCompleted(payout.group_id).catch(() => {});
+    } else if (cycleWasLate) {
+      await advanceCycle(payout.group_id).catch(() => {});
     }
 
     res.status(200).json({
