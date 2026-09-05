@@ -91,6 +91,8 @@ export async function createGroup(data, userId) {
 }
 
 export async function getGroups() {
+    await syncCompletedGroups();
+
     const { rows } = await pool.query(
         `
         SELECT
@@ -115,6 +117,8 @@ export async function getGroups() {
 }
 
 export async function getGroupById(groupId) {
+    await syncCompletedGroups(groupId);
+
     const { rows } = await pool.query(
         `
         SELECT
@@ -141,6 +145,36 @@ export async function getGroupById(groupId) {
     }
 
     return rows[0];
+}
+
+export async function syncCompletedGroups(groupId = null) {
+        const params = groupId ? [groupId] : [];
+        const groupFilter = groupId ? 'AND g.group_id = $1' : '';
+
+        await pool.query(
+                `UPDATE equb_groups g
+                 SET status = 'completed'
+                 WHERE g.status = 'active'
+                     AND g.is_deleted = FALSE
+                     ${groupFilter}
+                     AND EXISTS (
+                         SELECT 1 FROM group_members active_members
+                         WHERE active_members.group_id = g.group_id
+                             AND active_members.status = 'active'
+                     )
+                     AND NOT EXISTS (
+                         SELECT 1 FROM group_members gm
+                         WHERE gm.group_id = g.group_id
+                             AND gm.status = 'active'
+                             AND NOT EXISTS (
+                                 SELECT 1 FROM payouts p
+                                 WHERE p.group_id = gm.group_id
+                                     AND p.member_id = gm.member_id
+                                     AND p.status = 'completed'
+                             )
+                     )`,
+                params
+        );
 }
 
 

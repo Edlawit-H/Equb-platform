@@ -60,20 +60,14 @@ class _HomeScreenState extends State<HomeScreen> {
       final groups = groupRes["data"] is List
           ? List<Map<String, dynamic>>.from(groupRes["data"])
           : <Map<String, dynamic>>[];
-      final memberResponses = await Future.wait(
-        groups.map((group) => GroupService()
-            .getGroupMembers(group["group_id"].toString())
-            .catchError((_) => <String, dynamic>{})),
-      );
-      for (var index = 0; index < groups.length; index++) {
-        final members = memberResponses[index]["data"];
-        groups[index]["actual_member_count"] =
-            members is List ? members.length : 0;
-      }
+      final activeGroups = groups
+          .where((group) =>
+              (group["status"] ?? "").toString().toLowerCase() != "completed")
+          .toList();
 
       if (mounted) {
         setState(() {
-          _groups = groups;
+          _groups = activeGroups;
 
           if (profileRes["data"] != null && profileRes["data"] is Map) {
             _userProfile = Map<String, dynamic>.from(profileRes["data"]);

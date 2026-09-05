@@ -19,6 +19,7 @@ class _SplashPageState extends State<SplashPage> {
   }
 
   Future<void> _checkAuthAndNavigate() async {
+    // Keep the branded splash visible briefly while authentication is checked.
     await Future.delayed(const Duration(seconds: 2));
     try {
       final token = await _storage.read(key: 'access_token');
@@ -44,7 +45,11 @@ class _SplashPageState extends State<SplashPage> {
           children: [
             Text(
               'Equb',
-              style: TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 42,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Poppins'),
             ),
             SizedBox(height: 12),
             CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),

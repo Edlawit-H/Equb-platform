@@ -321,8 +321,8 @@ export const approvePayout = asyncWrapper(async (req, res) => {
     await client.query('BEGIN');
 
     const { rows: payoutRows } = await client.query(
-      `SELECT p.payout_id, p.group_id, p.member_id, p.payout_amount, p.cycle_number, p.status,
-              gm.user_id, eg.admin_id
+            `SELECT p.payout_id, p.group_id, p.member_id, p.payout_amount, p.cycle_number, p.status,
+              gm.user_id, eg.admin_id, eg.status AS group_status
        FROM payouts p
        JOIN group_members gm ON gm.member_id = p.member_id
        JOIN equb_groups eg ON eg.group_id = p.group_id
@@ -342,6 +342,10 @@ export const approvePayout = asyncWrapper(async (req, res) => {
 
     if (payout.status !== 'pending') {
       throw new AppError(`Cannot approve payout with status '${payout.status}'`, 400);
+    }
+
+    if (payout.group_status === 'completed') {
+      throw new AppError('This group is already completed.', 409);
     }
 
     // Block approval if any member hasn't paid yet — same rule as automatic flow

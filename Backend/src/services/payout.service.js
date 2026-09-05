@@ -114,13 +114,9 @@ export const checkCycleComplete = async (groupId, cycleNumber) => {
       [winner.user_id, groupId, payoutAmount]
     );
 
-    await client.query('COMMIT');
-
-    await notifyPayoutReceived(winner.user_id, payoutAmount, groupId).catch(() => {});
-
-    // Completion is tied ONLY to payouts — the group is done when every active
-    // member has received a completed payout. No date checks, no cycle counters.
-    const { rows: unpaidMembers } = await pool.query(
+    // Decide completion inside the same transaction as the payout so the
+    // group status cannot lag behind the final payout on another connection.
+    const { rows: unpaidMembers } = await client.query(
       `SELECT gm.member_id
        FROM group_members gm
        WHERE gm.group_id = $1
@@ -133,13 +129,20 @@ export const checkCycleComplete = async (groupId, cycleNumber) => {
          )`,
       [groupId]
     );
-
-    if (unpaidMembers.length === 0) {
-      // Every member has received their payout — the Equb is complete.
-      await pool.query(
-        `UPDATE equb_groups SET status = 'completed' WHERE group_id = $1 AND status = 'active'`,
+    const allMembersPaid = unpaidMembers.length === 0;
+    if (allMembersPaid) {
+      await client.query(
+        `UPDATE equb_groups SET status = 'completed'
+         WHERE group_id = $1 AND status = 'active'`,
         [groupId]
       );
+    }
+
+    await client.query('COMMIT');
+
+    await notifyPayoutReceived(winner.user_id, payoutAmount, groupId).catch(() => {});
+
+    if (allMembersPaid) {
       await notifyGroupCompleted(groupId).catch(() => {});
     } else {
       // More members still need their payout — advance to next cycle if the

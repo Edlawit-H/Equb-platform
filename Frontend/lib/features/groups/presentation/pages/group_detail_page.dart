@@ -1372,6 +1372,30 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
       });
     }
 
+    if (_groupStatus == 'COMPLETED') {
+      final payoutDates = _transactions
+          .where((transaction) {
+            final type = transaction['type']?.toString() ?? '';
+            return type == 'payout_credit' || type == 'payout';
+          })
+          .map((transaction) => transaction['created_at']?.toString() ?? '')
+          .where((date) => date.isNotEmpty)
+          .toList();
+      payoutDates.sort();
+      final completedAt = payoutDates.isNotEmpty
+          ? payoutDates.last
+          : (_groupData['end_date']?.toString() ?? '');
+      if (completedAt.isNotEmpty) {
+        events.add({
+          'type': 'group_completed',
+          'label': 'Group Completed',
+          'sub': 'Every active member has received a payout',
+          'date': completedAt.split('T').first,
+          'sort': completedAt,
+        });
+      }
+    }
+
     // Show the newest activity first.
     events.sort((a, b) => (b['sort'] ?? '').compareTo(a['sort'] ?? ''));
 
@@ -1433,6 +1457,11 @@ class _GroupDetailsPageState extends State<GroupDetailsPage>
             iconColor = const Color(0xFF7C3AED);
             iconBg = const Color(0xFFF3E8FF);
             iconData = Icons.flag_circle_rounded;
+            break;
+          case 'group_completed':
+            iconColor = activeGreen;
+            iconBg = activeGreenBg;
+            iconData = Icons.task_alt_rounded;
             break;
           case 'payout':
             iconColor = activeGreen;

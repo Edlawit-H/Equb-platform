@@ -348,6 +348,28 @@ export async function getDashboard(userId) {
 
 
 export async function getUserGroups(userId) {
+        await pool.query(
+                `UPDATE equb_groups g
+                 SET status = 'completed'
+                 WHERE g.status = 'active'
+                     AND g.is_deleted = FALSE
+                     AND EXISTS (
+                         SELECT 1 FROM group_members active_members
+                         WHERE active_members.group_id = g.group_id
+                             AND active_members.status = 'active'
+                     )
+                     AND NOT EXISTS (
+                         SELECT 1 FROM group_members gm
+                         WHERE gm.group_id = g.group_id
+                             AND gm.status = 'active'
+                             AND NOT EXISTS (
+                                 SELECT 1 FROM payouts p
+                                 WHERE p.group_id = gm.group_id
+                                     AND p.member_id = gm.member_id
+                                     AND p.status = 'completed'
+                             )
+                     )`
+        );
 
     const { rows: userRows } = await pool.query(
         `
