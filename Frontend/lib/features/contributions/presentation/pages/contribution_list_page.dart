@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/loading_overlay.dart';
 import '../../data/contributions_service.dart';
+import '../../../../main.dart' show routeObserver;
 
 class ContributionListPage extends StatefulWidget {
   const ContributionListPage({super.key});
@@ -10,7 +11,8 @@ class ContributionListPage extends StatefulWidget {
   State<ContributionListPage> createState() => _ContributionListPageState();
 }
 
-class _ContributionListPageState extends State<ContributionListPage> with SingleTickerProviderStateMixin {
+class _ContributionListPageState extends State<ContributionListPage>
+    with SingleTickerProviderStateMixin, RouteAware {
   final _service = ContributionsService();
   late TabController _tabs;
   final Map<String, List<Map<String, dynamic>>> _data = {
@@ -29,9 +31,24 @@ class _ContributionListPageState extends State<ContributionListPage> with Single
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Subscribe to the RouteObserver so didPopNext fires when navigating back here.
+    final route = ModalRoute.of(context);
+    if (route != null) routeObserver.subscribe(this, route);
+  }
+
+  @override
   void dispose() {
+    routeObserver.unsubscribe(this);
     _tabs.dispose();
     super.dispose();
+  }
+
+  /// Called when this page is revealed again after a child route is popped.
+  @override
+  void didPopNext() {
+    _load();
   }
 
   Future<void> _load() async {
@@ -86,24 +103,9 @@ class _ContributionListPageState extends State<ContributionListPage> with Single
         child: TabBarView(
           controller: _tabs,
           children: [
-            _ContributionTab(
-              items: _data['upcoming']!,
-              type: 'upcoming',
-              error: _error,
-              onRefresh: _load,
-            ),
-            _ContributionTab(
-              items: _data['history']!,
-              type: 'history',
-              error: _error,
-              onRefresh: _load,
-            ),
-            _ContributionTab(
-              items: _data['overdue']!,
-              type: 'overdue',
-              error: _error,
-              onRefresh: _load,
-            ),
+            _ContributionTab(items: _data['upcoming']!, type: 'upcoming', error: _error, onRefresh: _load),
+            _ContributionTab(items: _data['history']!, type: 'history', error: _error, onRefresh: _load),
+            _ContributionTab(items: _data['overdue']!, type: 'overdue', error: _error, onRefresh: _load),
           ],
         ),
       ),
@@ -117,12 +119,7 @@ class _ContributionTab extends StatelessWidget {
   final String? error;
   final Future<void> Function() onRefresh;
 
-  const _ContributionTab({
-    required this.items,
-    required this.type,
-    this.error,
-    required this.onRefresh,
-  });
+  const _ContributionTab({required this.items, required this.type, this.error, required this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
@@ -151,21 +148,13 @@ class _ContributionTab extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              type == 'upcoming'
-                  ? Icons.event_available_rounded
-                  : type == 'history'
-                      ? Icons.history_rounded
-                      : Icons.alarm_on_rounded,
+              type == 'upcoming' ? Icons.event_available_rounded : type == 'history' ? Icons.history_rounded : Icons.alarm_on_rounded,
               size: 48,
               color: AppTheme.grayText.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 12),
             Text(
-              type == 'upcoming'
-                  ? 'No upcoming contributions'
-                  : type == 'history'
-                      ? 'No contribution history yet'
-                      : 'No overdue contributions 🎉',
+              type == 'upcoming' ? 'No upcoming contributions' : type == 'history' ? 'No contribution history yet' : 'No overdue contributions 🎉',
               style: const TextStyle(fontFamily: 'Poppins', color: AppTheme.grayText, fontSize: 14),
             ),
           ],
@@ -195,11 +184,7 @@ class _ContributionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isPaid = type == 'history';
     final isOverdue = type == 'overdue';
-    final Color badgeColor = isPaid
-        ? AppTheme.success
-        : isOverdue
-            ? AppTheme.error
-            : AppTheme.primary;
+    final Color badgeColor = isPaid ? AppTheme.success : isOverdue ? AppTheme.error : AppTheme.primary;
     final amount = item['amount'];
     final formattedAmount = (amount is num ? amount.toDouble() : double.tryParse('$amount') ?? 0.0).toStringAsFixed(0);
 
@@ -210,66 +195,39 @@ class _ContributionCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
         ),
         child: Row(
           children: [
             Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: badgeColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                isPaid
-                    ? Icons.check_circle_rounded
-                    : isOverdue
-                        ? Icons.warning_rounded
-                        : Icons.access_time_rounded,
-                color: badgeColor,
-                size: 24,
-              ),
+              width: 48, height: 48,
+              decoration: BoxDecoration(color: badgeColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+              child: Icon(isPaid ? Icons.check_circle_rounded : isOverdue ? Icons.warning_rounded : Icons.access_time_rounded, color: badgeColor, size: 24),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    item['group_name'] ?? 'Equb Contribution',
-                    style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.darkText),
-                  ),
+                  Text(item['group_name'] ?? 'Equb Contribution',
+                    style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.darkText)),
                   const SizedBox(height: 2),
-                  Text(
-                    'Cycle ${item['cycle_number']} • Due ${item['due_date'] ?? '—'}',
-                    style: const TextStyle(fontFamily: 'Poppins', color: AppTheme.grayText, fontSize: 12),
-                  ),
+                  Text('Cycle ${item['cycle_number']} • Due ${item['due_date'] ?? '—'}',
+                    style: const TextStyle(fontFamily: 'Poppins', color: AppTheme.grayText, fontSize: 12)),
                 ],
               ),
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  'ETB $formattedAmount',
-                  style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.darkText),
-                ),
+                Text('ETB $formattedAmount',
+                  style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.darkText)),
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: badgeColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  decoration: BoxDecoration(color: badgeColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                   child: Text(
-                    isPaid
-                        ? 'Paid'
-                        : isOverdue
-                            ? 'Overdue'
-                            : 'Pending',
+                    isPaid ? 'Paid' : isOverdue ? 'Overdue' : 'Pending',
                     style: TextStyle(fontFamily: 'Poppins', color: badgeColor, fontSize: 10, fontWeight: FontWeight.w600),
                   ),
                 ),
